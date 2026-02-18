@@ -117,16 +117,17 @@ method
     : ID LP param_list_opt RP COLON type stmtBl
         {
           $$ = new Node("Method", $1, yylineno);
-          $$ = new Node("Params", "", yylineno);
-          $$->children.push_back($3);
+          Node* p = new Node("Params", "", yylineno);
+          p->children.push_back($3);
+          $$->children.push_back(p);
           $$->children.push_back($6);
           $$->children.push_back($7);
         }
     | ID COLON type LP RP stmtBl
         {
           $$ = new Node("Method", $1, yylineno);
-          $$ = new Node("Params", "", yylineno);
-          $$->children.push_back($3);
+          Node* p = new Node("Params", "", yylineno);
+          $$->children.push_back(p);
           $$->children.push_back($3);
           $$->children.push_back($6);
         }
