@@ -1,0 +1,9 @@
+compiler
+
+*.yy.c 
+*.tab.o
+*.tab.cc
+*.tab.hh
+*.output
+*.pdf
+*.hh
