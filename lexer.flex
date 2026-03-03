@@ -3,6 +3,11 @@
     #define YY_DECL yy::parser::symbol_type yylex()
     #include "Node.h"
     int lexical_errors = 0;
+    int brace_level = 0;
+    std::vector<int> indent_stack = {0}; 
+    int pending_indents = 0;              
+    int pending_dedents = 0;              
+    bool at_line_start = true;
 }
 %option yylineno noyywrap nounput batch noinput stack 
 %%
@@ -19,8 +24,8 @@
 ")"                     {if(USE_LEX_ONLY) {printf("RP ");} else {return yy::parser::make_RP(yytext);}}
 "["                     {if(USE_LEX_ONLY) {printf("LSB ");} else {return yy::parser::make_LSB(yytext);}}
 "]"                     {if(USE_LEX_ONLY) {printf("RSB ");} else {return yy::parser::make_RSB(yytext);}}
-"{"                     {if(USE_LEX_ONLY) {printf("LCB ");} else {return yy::parser::make_LCB(yytext);}}
-"}"                     {if(USE_LEX_ONLY) {printf("RCB ");} else {return yy::parser::make_RCB(yytext);}}
+"{"                     {if(USE_LEX_ONLY) {printf("LCB ");} else { brace_level++; return yy::parser::make_LCB(yytext);}}
+"}"                     {if(USE_LEX_ONLY) {printf("RCB ");} else {if (brace_level > 0) brace_level--; return yy::parser::make_RCB(yytext);}}
 "&"                     {if(USE_LEX_ONLY) {printf("AND ");} else {return yy::parser::make_AND();}}
 "|"                     {if(USE_LEX_ONLY) {printf("OR ");} else {return yy::parser::make_OR();}}
 "<"                     {if(USE_LEX_ONLY) {printf("LT ");} else {return yy::parser::make_LT();}}
@@ -31,7 +36,6 @@
 "!="                    {if(USE_LEX_ONLY) {printf("NOTEQUAL ");} else {return yy::parser::make_NOTEQUAL();}}
 ":="                    {if(USE_LEX_ONLY) {printf("ASSIGNMENTOP ");} else {return yy::parser::make_ASSIGNMENTOP(yytext);}}
 "!"                     {if(USE_LEX_ONLY) {printf("NOTOP ");} else {return yy::parser::make_NOTOP();}}
-
 
 "%%"                    {if(USE_LEX_ONLY) {printf("DELIMITER ");} else {return yy::parser::make_DELIMITER ();}}
 ","                     {if(USE_LEX_ONLY) {printf("COMMA ");} else {return yy::parser::make_COMMA(yytext);}}
@@ -59,13 +63,72 @@
 0|[1-9][0-9]*           {if(USE_LEX_ONLY) {printf("INT ");} else {return yy::parser::make_INT(yytext);}}
 [0-9]+"."[0-9]+         {if (USE_LEX_ONLY) {printf("FLOAT ");} else {return yy::parser::make_FLOAT(yytext);}}
 
-[a-z]|[A-Z]|[a-z][0-9A-Za-z]*|[A-Z][0-9A-Za-z]*   {if(USE_LEX_ONLY) {printf("ID ");} else {return yy::parser::make_ID(yytext);}}
+[a-zA-Z_][a-zA-Z0-9_]* { return yy::parser::make_ID(yytext); }
 
-[ \t\r]+              {}
+
+^[ \t]*$ {
+    if (at_line_start && pending_dedents > 0) {
+        pending_dedents--;
+        return yy::parser::make_DEDENT();
+    }
+}
+
+^[ \t]+ {
+    if (!at_line_start) {
+    
+    } else {
+        int tabs = yyleng;
+        int current = indent_stack.back();
+
+        if (brace_level > 0) {
+        
+            at_line_start = false;
+        } else if (tabs > current) {
+            indent_stack.push_back(tabs);
+            at_line_start = false;
+            return yy::parser::make_INDENT();
+        } else if (tabs < current) {
+            int count = 0;
+            while (indent_stack.size() > 1 && indent_stack.back() > tabs) {
+                indent_stack.pop_back();
+                count++;
+            }
+            if (count > 0) {
+                if (count > 1)
+                    pending_dedents += (count - 1);
+                at_line_start = false;
+                return yy::parser::make_DEDENT();
+            }
+            at_line_start = false;
+        } else {
+          
+            at_line_start = false;
+        }
+    }
+}
+
+
+[ \t]+ {  }
+
+
 "//"[^\n]*              {}
-.                       {if(!lexical_errors) fprintf(stderr, "Lexical errors found! See the logs below: \n"); fprintf(stderr,"\t@error at line %d. Character %s is not recognized\n", yylineno, yytext);}
-<<EOF>>                  {return yy::parser::make_END();}
 
-"\n"                    {if(USE_LEX_ONLY) {printf("NEWLINE \n");} else {return yy::parser::make_NEWLINE();}}
+.            { 
+                if (!lexical_errors) 
+                    fprintf(stderr, "Lexical errors found! See below:\n"); 
+                lexical_errors++; 
+                fprintf(stderr, "\t@line %d, unrecognized character '%s'\n", yylineno, yytext); 
+            
+             }
+\r?\n                    {at_line_start = true; if(USE_LEX_ONLY) {printf("NEWLINE \n");} else {return yy::parser::make_NEWLINE();}}
+
+<<EOF>>                  {
+                            while (indent_stack.size() > 1) {
+                                indent_stack.pop_back();
+                                return yy::parser::make_DEDENT();
+                            }
+                            return yy::parser::make_END();
+                        }
+
 
 %%

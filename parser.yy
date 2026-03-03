@@ -34,22 +34,30 @@
 %token NOTOP
 %token EQUAL NOTEQUAL LT GT LTE GTE
 %token <std::string> ASSIGNMENTOP
-
+%token INDENT DEDENT
 %token <std::string> LP RP
 %token <std::string> LSB RSB LCB RCB
 %token <std::string> COMMA COLON DOT
 %token NEWLINE
 %token END 0 "end of file"
 
-%left OR
+%left ASSIGNMENTOP
+%left OR IF
 %left AND
-%nonassoc EQUAL NOTEQUAL LT GT LTE GTE
+%left EQUAL NOTEQUAL LT GT  
+%left LTE GTE
+%left LSB RSB
+%right DOT 
+%right LCB RCB 
+%nonassoc LENGTH 
 %left PLUSOP MINUSOP
 %left MULTOP DIVOP
 %right POWEROP
+%left ID ELSE 
+%left LP RP 
 %right NOTOP
 
-%type <Node*> program class class_body entry method var type baseType  
+%type <Node*> program class class_body entry method var type baseType opt_else opt_assignement 
 %type <Node*> stmt stmtBl stmt_list
 %type <Node*> param_list param_list_opt
 %type <Node*> root
@@ -67,14 +75,12 @@ root
     ;
 
 program
-    :  { $$ = new Node("Program", "", yylineno); }
-    | program class stmtEnd
-        { $$ = $1; $$->children.push_back($2); }
+    :  { $$ = new Node("Program", "", yylineno); } 
     | program entry stmtEnd
         { $$ = $1; $$->children.push_back($2); }
-    | program stmt stmtEnd  
+    | program class stmtEnd
         { $$ = $1; $$->children.push_back($2); }
-    | program var stmtEnd
+    | program stmt stmtEnd  
         { $$ = $1; $$->children.push_back($2); }
     | program DELIMITER
         {
@@ -106,30 +112,30 @@ class_body
     ;
 
 entry
-    : MAIN LP RP COLON INTKEY stmtBl
+    : MAIN LP RP COLON INTKEY opt_nl stmtBl
         {
           $$ = new Node("Main", "", yylineno);
-          $$->children.push_back($6);
+          $$->children.push_back($7);
         }
     ;
 
 method
-    : ID LP param_list_opt RP COLON type stmtBl
+    : ID LP param_list_opt RP COLON type opt_nl stmtBl
         {
           $$ = new Node("Method", $1, yylineno);
           Node* p = new Node("Params", "", yylineno);
           p->children.push_back($3);
           $$->children.push_back(p);
           $$->children.push_back($6);
-          $$->children.push_back($7);
+          $$->children.push_back($8);
         }
-    | ID COLON type LP RP stmtBl
+    | ID COLON type LP RP opt_nl stmtBl
         {
           $$ = new Node("Method", $1, yylineno);
           Node* p = new Node("Params", "", yylineno);
           $$->children.push_back(p);
           $$->children.push_back($3);
-          $$->children.push_back($6);
+          $$->children.push_back($7);
         }
     ;
 
@@ -154,117 +160,143 @@ param_list
           $$ = $1;
         }
     ;
-    
+
+opt_assignement
+    : ASSIGNMENTOP expr
+        { $$ = $2; }
+    | 
+        { $$ = nullptr; }
+    ;
+
 var
-    : VOLATILE ID COLON type
+    : VOLATILE ID COLON type  opt_assignement // Volitile name : type := expr
         {
-          $$ = new Node("VarDecl", $2, yylineno);
+          if ($5 != nullptr)
+            $$ = new Node("VarDeclAssign", $2, yylineno);
+          else
+            $$ = new Node("VarDecl", $2, yylineno);
+
           $$->children.push_back($4);
+
+          if ($5 != nullptr)
+            $$->children.push_back($5);
         }
-    | VOLATILE ID COLON type ASSIGNMENTOP expr
+    | ID COLON type opt_assignement // name : type := expr
         {
-          $$ = new Node("VarDeclAssign", $2, yylineno);
-          $$->children.push_back($4); 
-          $$->children.push_back($6); 
-        }
-    | ID COLON type
-        {
-          $$ = new Node("VarDecl", $1, yylineno);
+          if ($4 != nullptr)
+            $$ = new Node("VarDeclAssign", $1, yylineno);
+          else
+            $$ = new Node("VarDecl", $1, yylineno);
           $$->children.push_back($3);
-        }
-    | ID COLON type ASSIGNMENTOP expr
-        {
-          $$ = new Node("VarDeclAssign", $1, yylineno);
-          $$->children.push_back($3);
-          $$->children.push_back($5);
+          if ($4 != nullptr)
+            $$->children.push_back($4);
+
         }
     ;
 
 type
-    : baseType           { $$ = $1; }
-    | baseType LSB RSB   { $$ = new Node("ArrayType", "", yylineno); $$->children.push_back($1); }
-    | ID                 { $$ = new Node("TypeID", $1, yylineno); }
-    | VOIDKEY            { $$ = new Node("VoidType", "", yylineno); }
+    :  baseType          { $$ = $1; } // basic types
+    | ID                 { $$ = new Node("TypeID", $1, yylineno); } // user-defined type, e.g., class name
+    | VOIDKEY            { $$ = new Node("VoidType", "", yylineno); } // void type
     ;
 
-baseType
-    : INTKEY     { $$ = new Node("IntType", "", yylineno); }
+baseType 
+    : // only the basic types, no arrays or user-defined types
+    INTKEY     { $$ = new Node("IntType", "", yylineno); }
     | FLOATKEY   { $$ = new Node("FloatType", "", yylineno); }
     | BOOLEANKEY { $$ = new Node("BoolType", "", yylineno); }
-    ;
+    | baseType LSB RSB {
+          $$ = new Node("ArrayType", "", yylineno);
+          $$->children.push_back($1);
+      }
+      ;
 
 
 
 stmtBl
-    : LCB stmt_list RCB
+    : LCB stmt_list RCB  // { stmt_list }
+        { $$ = new Node("Block", "", yylineno); $$->children.push_back($2); } // block statement, a list of statments.
+    | INDENT stmt_list DEDENT
         { $$ = new Node("Block", "", yylineno); $$->children.push_back($2); }
     ;
 
 stmt_list
-    : 
-    { $$ = new Node("StmtList", "", yylineno); }
-    | stmt_list stmt { $$ = $1; $$->children.push_back($2); }
-    | stmt_list NEWLINE { $$ = $1; } 
+    : { $$ = new Node("StmtList", "", yylineno); } // empty statement list
+    | stmt_list stmt { $$ = $1; $$->children.push_back($2); } // statement followed by another statement
+    | stmt_list NEWLINE  { $$ = $1; } // statement followed by a newline, ignore the newline
+    ;
+
+opt_else 
+    :  ELSE stmtBl { $$ = $2; } // optional else statement
+    | { $$ = nullptr; } %prec IF
+    ;
+
+opt_nl
+    : NEWLINE
+    | 
     ;
 
 stmt
-    : NEWLINE stmt                   { $$ = $2; }
-    | stmtBl                         { $$ = $1; }
-    | var                  
-      { $$ = $1; }
-    | expr ASSIGNMENTOP expr stmtEnd
-        {
+    : stmtBl  { $$ = $1; } // block statement
+    | var     { $$ = $1; } // variable declaration (with optional assignment)
+    | expr ASSIGNMENTOP expr stmtEnd // assignment statement
+        {                            // name := expr;
           $$ = new Node("Assign", "", yylineno);
           $$->children.push_back($1);
           $$->children.push_back($3);
         }
-    | FOR LP for_header RP stmtBl
-        {
+    | FOR LP for_header RP opt_nl stmtBl // for loop
+        {                         // for (init; condition; update) {}
           $$ = new Node("For", "", yylineno);
           $$->children.push_back($3);
-          $$->children.push_back($5); 
+          $$->children.push_back($6); 
         }
-    |WHILE LP expr RP stmtBl
-        {
+    |WHILE LP expr RP opt_nl stmtBl // while loop
+        {                    // while (condition) {}
           $$ = new Node("While", "", yylineno);
           $$->children.push_back($3);
-          $$->children.push_back($5); 
+          $$->children.push_back($6); 
         }
-    | IF LP expr RP stmt ELSE stmt
-        {
-          $$ = new Node("IfElse", "", yylineno);
+    | IF LP expr RP opt_nl stmtBl opt_else // if statement with optional else
+        {                         // if () {} else {}, else is optional
+          if ($7 != nullptr)
+            $$ = new Node("IfElse", "", yylineno);
+          else
+            $$ = new Node("If", "", yylineno);
+          
           $$->children.push_back($3);
-          $$->children.push_back($5);
-          $$->children.push_back($7);
+          $$->children.push_back($6);
+          if ($7 != nullptr)
+            $$->children.push_back($7);
         }
-    | IF LP expr RP stmt
-        {
-          $$ = new Node("If", "", yylineno);
-          $$->children.push_back($3);
-          $$->children.push_back($5);
-        }
-    | PRINT LP expr RP stmtEnd
+    | PRINT LP expr RP stmtEnd // print statement, print(expr)
         {
           $$ = new Node("Print", "", yylineno);
           $$->children.push_back($3);
         }
-    | READ LP expr RP stmtEnd
+    | READ LP expr RP stmtEnd // read statement, read(someVar)
         {
           $$ = new Node("Read", "", yylineno);
           $$->children.push_back($3);
-        }
-    | RETURN expr stmtEnd
+        } 
+    | RETURN expr stmtEnd // return statement, return expr
         {
           $$ = new Node("Return", "", yylineno);
           $$->children.push_back($2);
         }
-    | BREAK stmtEnd     { $$ = new Node("Break", "", yylineno); }
-    | CONTINUE stmtEnd { $$ = new Node("Continue", "", yylineno); }
-    | expr stmtEnd     { $$ = $1; }
+    | BREAK stmtEnd  // break statement, break    
+        { $$ = new Node("Break", "", yylineno); }
+    | CONTINUE stmtEnd  // continue statement, continue 
+        { $$ = new Node("Continue", "", yylineno); }
+    | // empty statement, {}
+      expr stmtEnd     
+        { $$ = $1; }
+       
     ;
 
-for_header
-    : expr ASSIGNMENTOP expr COMMA expr COMMA expr ASSIGNMENTOP expr
+for_header 
+    :       // for(init; condition; update)
+    expr ASSIGNMENTOP expr COMMA expr COMMA expr ASSIGNMENTOP expr
         {
         $$ = new Node("ForHeader", "", yylineno);
 
@@ -288,148 +320,140 @@ for_header
 
 stmtEnd
     : NEWLINE
-    | stmtEnd NEWLINE
-    |
+    | END stmtEnd 
     ;
 
 expr
-    : NOTOP expr
-      {
-        Node* n = new Node("Not", "", yylineno);
-        n->children.push_back($2);
-        $$ = n;
-      }
-    | expr LENGTH LP expr RP
-      {
-        Node* n = new Node("Length", "", yylineno);
-        n->children.push_back($1);
-        $$ = n;
-      }
-    | expr POWEROP expr
-      {
-        Node* n = new Node("Pow", "", yylineno);
-        n->children.push_back($1);
-        n->children.push_back($3);
-        $$ = n;
-      }
-    | expr MULTOP expr
-      {
-        Node* n = new Node("Mul", "", yylineno);
-        n->children.push_back($1);
-        n->children.push_back($3);
-        $$ = n;
-      }
-    | expr DIVOP expr
-      {
-        Node* n = new Node("Div", "", yylineno);
-        n->children.push_back($1);
-        n->children.push_back($3);
-        $$ = n;
-      }
-    | expr PLUSOP expr
-      {
-        Node* n = new Node("Add", "", yylineno);
-        n->children.push_back($1);
-        n->children.push_back($3);
-        $$ = n;
-      }
-    | expr MINUSOP expr
-      {
-        Node* n = new Node("Sub", "", yylineno);
-        n->children.push_back($1);
-        n->children.push_back($3);
-        $$ = n;
-      }
-    | expr AND expr
+      
+    : ID //name
+      { $$ = new Node("Identifier", $1, yylineno); }  
+    |INT // interger
+      { $$ = new Node("IntLiteral", $1, yylineno); }
+    | FLOAT // float
+      { $$ = new Node("FloatLiteral", $1, yylineno); }
+    | TRUE // boolean.true
+      { $$ = new Node("True", "true", yylineno); }
+    | FALSE // boolean.false
+      { $$ = new Node("False", "false", yylineno); }
+    | expr AND expr // logical and
       {
         Node* n = new Node("And", "", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
-    | expr OR expr
+    | expr OR expr // logical or
       {
         Node* n = new Node("Or", "", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
-    | expr EQUAL expr
+    | expr LENGTH LP expr RP //"name.length(expr)"
+      {
+        Node* n = new Node("Length", "", yylineno);
+        n->children.push_back($1);
+        $$ = n;
+      }
+    | expr POWEROP expr // power operator
+      {
+        Node* n = new Node("Pow", "", yylineno);
+        n->children.push_back($1);
+        n->children.push_back($3);
+        $$ = n;
+      }
+    | expr MULTOP expr // multiplication
+      {
+        Node* n = new Node("Mul", "", yylineno);
+        n->children.push_back($1);
+        n->children.push_back($3);
+        $$ = n;
+      }
+    | expr DIVOP expr // division
+      {
+        Node* n = new Node("Div", "", yylineno);
+        n->children.push_back($1);
+        n->children.push_back($3);
+        $$ = n;
+      }
+    | expr PLUSOP expr // addition
+      {
+        Node* n = new Node("Add", "", yylineno);
+        n->children.push_back($1);
+        n->children.push_back($3);
+        $$ = n;
+      }
+    | expr MINUSOP expr // subtraction
+      {
+        Node* n = new Node("Sub", "", yylineno);
+        n->children.push_back($1);
+        n->children.push_back($3);
+        $$ = n;
+      }
+
+    | expr EQUAL expr // equal
       {
         Node* n = new Node("Eq", "", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
-    | expr NOTEQUAL expr
+    | expr NOTEQUAL expr // Not equal
       {
         Node* n = new Node("Neq", "", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
-    | expr LT expr
+    | expr LT expr // less than
       {
         Node* n = new Node("Lt", "", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
-    | expr GT expr
+    | expr GT expr // greater than
       {
         Node* n = new Node("Gt", "", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
-    | expr LTE expr
+    | expr LTE expr // less than or equal to
       {
         Node* n = new Node("Lte", "", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
-    | expr GTE expr
+    | expr GTE expr // greater than or equal to
       {
         Node* n = new Node("Gte", "", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
-    | LP expr RP
-      { $$ = $2; }
-    | ID
-      { $$ = new Node("Identifier", $1, yylineno); }
-    | INT
-      { $$ = new Node("IntLiteral", $1, yylineno); }
-    | FLOAT
-      { $$ = new Node("FloatLiteral", $1, yylineno); }
-    | TRUE
-      { $$ = new Node("True", "true", yylineno); }
-    | FALSE
-      { $$ = new Node("False", "false", yylineno); }
-    | expr DOT ID
+    | NOTOP expr // logical not
+      {
+        Node* n = new Node("Not", "", yylineno);
+        n->children.push_back($2);
+        $$ = n;
+      }
+    | expr DOT ID // varaibel.memberAccess
         {
           Node* n = new Node("MemberAccess", "", yylineno);
           n->children.push_back($1); 
           n->children.push_back(new Node("Identifier", $3, yylineno)); 
           $$ = n;
           }
-    | expr LSB expr RSB
+    | expr LSB expr RSB // array[index]
         {
           Node* n = new Node("ArrayAccess", "", yylineno);
           n->children.push_back($1);
           n->children.push_back($3); 
           $$ = n;
         }
-    | type LSB expr_list RSB
-        {
-          Node* n = new Node("ArrayLiteral", "", yylineno);
-          n->children.push_back($1);
-          n->children.push_back($3); 
-          $$ = n;
-        }
-    | INTKEY LSB expr_list RSB
+    | INTKEY LSB expr_list RSB // INT [expr_list]
         {
           Node* n = new Node("ArrayLiteral", "", yylineno);
           Node* t = new Node("IntType", "", yylineno);
@@ -437,7 +461,7 @@ expr
           n->children.push_back($3);
           $$ = n;
         }
-    | FLOATKEY LSB expr_list RSB
+    | FLOATKEY LSB expr_list RSB // FLOAT [expr_list]
         {
           Node* n = new Node("ArrayLiteral", "", yylineno);
           Node* t = new Node("FloatType", "", yylineno);
@@ -445,46 +469,35 @@ expr
           n->children.push_back($3);
           $$ = n;
         }
-    | LSB RSB
-        {
-          Node* n = new Node("EmptyArrayLiteral", "", yylineno);
-          $$ = n;
-        }
-    | ID LP RP
+    | LP expr RP // (expr)
+        { $$ = $2; }
+    | ID LP expr_list RP // foo_call(expr_list)
         {
           Node* n = new Node("FuncCall", $1, yylineno);
+          if ($3 != nullptr)
+            n->children.push_back($3);
           $$ = n;
         }
-    | ID LP expr_list RP
-        {
-          Node* n = new Node("FuncCall", $1, yylineno);
-          n->children.push_back($3);
-          $$ = n;
-        }
-    | expr DOT ID LP RP
-        {
-          Node* n = new Node("MethodCall", "", yylineno);
-          n->children.push_back($1); 
-          n->children.push_back(new Node("Identifier", $3, yylineno)); 
-          $$ = n;
-        }
-    | expr DOT ID LP expr_list RP
+    | expr DOT ID LP expr_list RP // method.call(expr_list)
         {
           Node* n = new Node("MethodCall", "", yylineno);
           n->children.push_back($1);
           n->children.push_back(new Node("Identifier", $3, yylineno));
-          n->children.push_back($5);
+          if ($5 != nullptr)
+            n->children.push_back($5);
           $$ = n;
         }
     ;
 
 expr_list
-    : expr
+    : // empty [] 
+      { $$ = new Node("ExprList", "", yylineno); } 
+    | expr // [expr]
         {
           $$ = new Node("ExprList", "", yylineno);
           $$->children.push_back($1); 
         }
-    | expr_list COMMA expr
+    | expr_list COMMA expr // [expr, expr, ...]
         {
           $$ = $1;  
           $$->children.push_back($3); 
