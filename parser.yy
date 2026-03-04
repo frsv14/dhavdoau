@@ -127,14 +127,6 @@ method
           $$->children.push_back($6);
           $$->children.push_back($7);
         }
-    | ID LP RP COLON type stmtBl 
-        {
-          $$ = new Node("Method", $1, yylineno);
-          Node* p = new Node("Params", "", yylineno);
-          $$->children.push_back(p);
-          $$->children.push_back($5);
-          $$->children.push_back($6);
-        }
     ;
 
 nonempty_param_list:
