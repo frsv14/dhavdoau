@@ -525,18 +525,6 @@ expr
         }
     | LP expr RP // (expr)
         { $$ = $2; }
-    | ID LP RP
-        {
-          Node* n = new Node("FuncCall", $1, yylineno);
-          $$ = n;
-        }
-    | ID LP expr_list RP // foo_call(expr_list)
-        {
-          Node* n = new Node("FuncCall", $1, yylineno);
-          if ($3 != nullptr)
-            n->children.push_back($3);
-          $$ = n;
-        }
     | expr DOT ID LP RP
         {
           Node* n = new Node("MethodCall", "", yylineno);
