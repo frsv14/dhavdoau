@@ -4,6 +4,7 @@
 %define parse.error verbose
 %define api.value.type variant
 %define api.token.constructor
+%define parse.trace
 
 %code requires{
   #include <string>
@@ -23,7 +24,7 @@
 
 %token <std::string> ID INT FLOAT
 %token DELIMITER
-%token CLASS MAIN IF ELSE FOR WHILE PRINT READ RETURN BREAK CONTINUE
+%token CLASS MAIN IF ELSE FOR PRINT READ RETURN BREAK CONTINUE
 %token VOLATILE
 %token INTKEY FLOATKEY BOOLEANKEY VOIDKEY
 %token <std::string> TRUE FALSE 
@@ -34,7 +35,7 @@
 %token NOTOP
 %token EQUAL NOTEQUAL LT GT LTE GTE
 %token <std::string> ASSIGNMENTOP
-%token INDENT DEDENT
+
 %token <std::string> LP RP
 %token <std::string> LSB RSB LCB RCB
 %token <std::string> COMMA COLON DOT
@@ -59,7 +60,7 @@
 
 %type <Node*> program class class_body entry method var type baseType opt_else opt_assignement 
 %type <Node*> stmt stmtBl stmt_list
-%type <Node*> param_list param_list_opt
+%type <Node*> param_list 
 %type <Node*> root
 %type <Node*> expr
 %type <Node*> for_header
@@ -88,12 +89,10 @@ program
           $$ = $1;
           $$->children.push_back(n);
         }
-    | program NEWLINE
-        { $$ = $1; }  
     ;
 
 class
-    : CLASS ID LCB class_body RCB
+    : CLASS ID LCB class_body RCB 
         {
           $$ = new Node("Class", $2, yylineno);
           $$->children.push_back($4);
@@ -103,45 +102,40 @@ class
 class_body
     : 
         { $$ = new Node("ClassBody", "", yylineno); }
-    | class_body var stmtEnd
+    | class_body var 
         { $$ = $1; $$->children.push_back($2); }
     | class_body method stmtEnd
         { $$ = $1; $$->children.push_back($2); }
-    | class_body NEWLINE  
+    | class_body NEWLINE
         { $$ = $1; }
     ;
 
 entry
-    : MAIN LP RP COLON INTKEY opt_nl stmtBl
+    : MAIN LP RP COLON INTKEY stmtBl stmtEnd
         {
           $$ = new Node("Main", "", yylineno);
-          $$->children.push_back($7);
+          $$->children.push_back($6);
         }
     ;
 
 method
-    : ID LP param_list_opt RP COLON type opt_nl stmtBl
+    : ID LP param_list RP COLON type stmtBl 
         {
           $$ = new Node("Method", $1, yylineno);
           Node* p = new Node("Params", "", yylineno);
           p->children.push_back($3);
           $$->children.push_back(p);
           $$->children.push_back($6);
-          $$->children.push_back($8);
+          $$->children.push_back($7);
         }
-    | ID COLON type LP RP opt_nl stmtBl
+    | ID LP RP COLON type stmtBl 
         {
           $$ = new Node("Method", $1, yylineno);
           Node* p = new Node("Params", "", yylineno);
           $$->children.push_back(p);
-          $$->children.push_back($3);
-          $$->children.push_back($7);
+          $$->children.push_back($5);
+          $$->children.push_back($6);
         }
-    ;
-
-param_list_opt
-    : { $$ = new Node("Params", "", yylineno); }
-    | param_list  { $$ = $1; }
     ;
 
 param_list
@@ -159,6 +153,7 @@ param_list
           $1->children.push_back(p);
           $$ = $1;
         }
+    | { $$ = new Node("Params", "", yylineno); }
     ;
 
 opt_assignement
@@ -195,29 +190,23 @@ var
     ;
 
 type
-    :  baseType          { $$ = $1; } // basic types
-    | ID                 { $$ = new Node("TypeID", $1, yylineno); } // user-defined type, e.g., class name
-    | VOIDKEY            { $$ = new Node("VoidType", "", yylineno); } // void type
+    : baseType           { $$ = $1; }
+    | baseType LSB RSB   { $$ = new Node("ArrayType", "", yylineno); $$->children.push_back($1); }
+    | ID                 { $$ = new Node("TypeID", $1, yylineno); }
+    | VOIDKEY            { $$ = new Node("VoidType", "", yylineno); }
     ;
 
-baseType 
-    : // only the basic types, no arrays or user-defined types
-    INTKEY     { $$ = new Node("IntType", "", yylineno); }
+baseType
+    : INTKEY     { $$ = new Node("IntType", "", yylineno); }
     | FLOATKEY   { $$ = new Node("FloatType", "", yylineno); }
     | BOOLEANKEY { $$ = new Node("BoolType", "", yylineno); }
-    | baseType LSB RSB {
-          $$ = new Node("ArrayType", "", yylineno);
-          $$->children.push_back($1);
-      }
-      ;
+    ;
 
 
 
 stmtBl
     : LCB stmt_list RCB  // { stmt_list }
         { $$ = new Node("Block", "", yylineno); $$->children.push_back($2); } // block statement, a list of statments.
-    | INDENT stmt_list DEDENT
-        { $$ = new Node("Block", "", yylineno); $$->children.push_back($2); }
     ;
 
 stmt_list
@@ -227,47 +216,38 @@ stmt_list
     ;
 
 opt_else 
-    :  ELSE stmtBl { $$ = $2; } // optional else statement
+    :  ELSE stmtBl  { $$ = $2; } // optional else statement
     | { $$ = nullptr; } %prec IF
     ;
 
-opt_nl
-    : NEWLINE
-    | 
-    ;
 
 stmt
-    : stmtBl  { $$ = $1; } // block statement
-    | var     { $$ = $1; } // variable declaration (with optional assignment)
+    : NEWLINE stmt                   { $$ = $2; }
+    | stmtBl  { $$ = $1; } // block statement
+    | var  stmtEnd  { $$ = $1; } // variable declaration (with optional assignment)
     | expr ASSIGNMENTOP expr stmtEnd // assignment statement
         {                            // name := expr;
           $$ = new Node("Assign", "", yylineno);
           $$->children.push_back($1);
           $$->children.push_back($3);
         }
-    | FOR LP for_header RP opt_nl stmtBl // for loop
+    | FOR LP for_header RP stmtBl // for loop
         {                         // for (init; condition; update) {}
           $$ = new Node("For", "", yylineno);
           $$->children.push_back($3);
-          $$->children.push_back($6); 
+          $$->children.push_back($5); 
         }
-    |WHILE LP expr RP opt_nl stmtBl // while loop
-        {                    // while (condition) {}
-          $$ = new Node("While", "", yylineno);
-          $$->children.push_back($3);
-          $$->children.push_back($6); 
-        }
-    | IF LP expr RP opt_nl stmtBl opt_else // if statement with optional else
-        {                         // if () {} else {}, else is optional
-          if ($7 != nullptr)
+    | IF LP expr RP stmt_list opt_else // for now this is creating
+        {                         
+          if ($6 != nullptr)
             $$ = new Node("IfElse", "", yylineno);
           else
             $$ = new Node("If", "", yylineno);
           
           $$->children.push_back($3);
-          $$->children.push_back($6);
-          if ($7 != nullptr)
-            $$->children.push_back($7);
+          $$->children.push_back($5);
+          if ($6 != nullptr)
+            $$->children.push_back($6);
         }
     | PRINT LP expr RP stmtEnd // print statement, print(expr)
         {
@@ -294,9 +274,8 @@ stmt
        
     ;
 
-for_header 
-    :       // for(init; condition; update)
-    expr ASSIGNMENTOP expr COMMA expr COMMA expr ASSIGNMENTOP expr
+for_header
+    : expr ASSIGNMENTOP expr COMMA expr COMMA expr ASSIGNMENTOP expr
         {
         $$ = new Node("ForHeader", "", yylineno);
 
@@ -315,16 +294,86 @@ for_header
         $$->children.push_back(cond);
         $$->children.push_back(update);
         }
+    |  COMMA expr COMMA expr ASSIGNMENTOP expr
+        {
+        $$ = new Node("ForHeader", "", yylineno);
+
+        Node* init = new Node("Init", "", yylineno);
+
+        Node* cond = new Node("Condition", "", yylineno);
+        cond->children.push_back($2); 
+
+        Node* update = new Node("Update", "", yylineno);
+        update->children.push_back($4); 
+        update->children.push_back($6); 
+
+        $$->children.push_back(init);
+        $$->children.push_back(cond);
+        $$->children.push_back(update);
+        }
+    |  expr ASSIGNMENTOP expr COMMA COMMA expr ASSIGNMENTOP expr
+        {
+        $$ = new Node("ForHeader", "", yylineno);
+
+        Node* init = new Node("Init", "", yylineno);
+        init->children.push_back($1); 
+        init->children.push_back($3);
+
+        Node* cond = new Node("Condition", "", yylineno);
+
+        Node* update = new Node("Update", "", yylineno);
+        update->children.push_back($6); 
+        update->children.push_back($8); 
+
+        $$->children.push_back(init);
+        $$->children.push_back(cond);
+        $$->children.push_back(update);
+        }
+    |  var COMMA COMMA expr ASSIGNMENTOP expr
+        {
+        $$ = new Node("ForHeader", "", yylineno);
+
+        Node* init = new Node("Init", "", yylineno);
+        init->children.push_back($1); 
+
+        Node* cond = new Node("Condition", "", yylineno);
+
+        Node* update = new Node("Update", "", yylineno);
+        update->children.push_back($4); 
+        update->children.push_back($6); 
+
+        $$->children.push_back(init);
+        $$->children.push_back(cond);
+        $$->children.push_back(update);
+        }
+    |  var COMMA expr COMMA expr ASSIGNMENTOP expr
+        {
+        $$ = new Node("ForHeader", "", yylineno);
+
+        Node* init = new Node("Init", "", yylineno);
+        init->children.push_back($1); 
+        init->children.push_back($3);
+
+        Node* cond = new Node("Condition", "", yylineno);
+        cond->children.push_back($5); 
+
+        Node* update = new Node("Update", "", yylineno);
+        update->children.push_back($7); 
+
+        $$->children.push_back(init);
+        $$->children.push_back(cond);
+        $$->children.push_back(update);
+        }
     ;
 
 
 stmtEnd
     : NEWLINE
-    | END stmtEnd 
+    | NEWLINE stmtEnd
+    | END
     ;
 
-expr
-      
+expr    
     : ID //name
       { $$ = new Node("Identifier", $1, yylineno); }  
     |INT // interger
@@ -453,6 +502,11 @@ expr
           n->children.push_back($3); 
           $$ = n;
         }
+    | LSB RSB
+        {
+          Node* n = new Node("EmptyArrayLiteral", "", yylineno);
+          $$ = n;
+        }
     | INTKEY LSB expr_list RSB // INT [expr_list]
         {
           Node* n = new Node("ArrayLiteral", "", yylineno);
@@ -471,11 +525,23 @@ expr
         }
     | LP expr RP // (expr)
         { $$ = $2; }
+    | ID LP RP
+        {
+          Node* n = new Node("FuncCall", $1, yylineno);
+          $$ = n;
+        }
     | ID LP expr_list RP // foo_call(expr_list)
         {
           Node* n = new Node("FuncCall", $1, yylineno);
           if ($3 != nullptr)
             n->children.push_back($3);
+          $$ = n;
+        }
+    | expr DOT ID LP RP
+        {
+          Node* n = new Node("MethodCall", "", yylineno);
+          n->children.push_back($1); 
+          n->children.push_back(new Node("Identifier", $3, yylineno)); 
           $$ = n;
         }
     | expr DOT ID LP expr_list RP // method.call(expr_list)
@@ -487,6 +553,7 @@ expr
             n->children.push_back($5);
           $$ = n;
         }
+  
     ;
 
 expr_list

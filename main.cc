@@ -48,7 +48,7 @@ int main(int argc, char **argv)
 	else
 	{
 		yy::parser parser;
-
+		// parser.set_debug_level(1);
 		bool parseSuccess = !parser.parse();
 
 		if (lexical_errors)
