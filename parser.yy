@@ -380,11 +380,6 @@ expr
       { $$ = new Node("True", "true", yylineno); }
     | FALSE // boolean.false
       { $$ = new Node("False", "false", yylineno); }
-    | ID LP RP
-        {
-          Node* n = new Node("FuncCall", $1, yylineno);
-          $$ = n;
-        }
     | ID LP expr_list RP
         {
           Node* n = new Node("FuncCall", $1, yylineno);
@@ -532,13 +527,6 @@ expr
         }
     | LP expr RP // (expr)
         { $$ = $2; }
-    | expr DOT ID LP RP
-        {
-          Node* n = new Node("MethodCall", "", yylineno);
-          n->children.push_back($1); 
-          n->children.push_back(new Node("Identifier", $3, yylineno)); 
-          $$ = n;
-        }
     | expr DOT ID LP expr_list RP // method.call(expr_list)
         {
           Node* n = new Node("MethodCall", "", yylineno);
