@@ -57,7 +57,7 @@
 %left LP RP 
 %right NOTOP
 
-%type <Node*> program class class_body entry method var type baseType opt_else opt_assignement 
+%type <Node*> program class class_body entry method var type baseType opt_else opt_assignement nonempty_expr_list nonempty_param_list opt_nl
 %type <Node*> stmt stmtBl stmt_list
 %type <Node*> param_list 
 %type <Node*> root
@@ -67,7 +67,7 @@
 
 %%
 root
-    : program entry stmtEnd
+    : program entry END
         {
           root = $1;
           root->children.push_back($2);
@@ -137,22 +137,25 @@ method
         }
     ;
 
-param_list
-    : ID COLON type
+nonempty_param_list:
+     ID COLON type
         {
           $$ = new Node("Params", "", yylineno);
           Node* p = new Node("Param", $1, yylineno);
           p->children.push_back($3);
           $$->children.push_back(p);
         }
-    | param_list COMMA ID COLON type
+    | nonempty_param_list COMMA ID COLON type
         {
           Node* p = new Node("Param", $3, yylineno);
           p->children.push_back($5);
           $1->children.push_back(p);
           $$ = $1;
         }
-    | { $$ = new Node("Params", "", yylineno); }
+
+param_list
+    :  nonempty_param_list
+    |  { $$ = new Node("Params", "", yylineno); }
     ;
 
 opt_assignement
@@ -215,10 +218,14 @@ stmt_list
     ;
 
 opt_else 
-    :  ELSE stmtBl  { $$ = $2; } // optional else statement
+    :  ELSE opt_nl stmt { $$ = $3; } // optional else statement
     | { $$ = nullptr; } %prec IF
     ;
 
+opt_nl
+  : NEWLINE
+  | 
+; 
 
 stmt
     : stmtBl  { $$ = $1; } // block statement
@@ -235,17 +242,17 @@ stmt
           $$->children.push_back($3);
           $$->children.push_back($5); 
         }
-    | IF LP expr RP stmtBl opt_else // for now this is creating
+    | IF LP expr RP opt_nl stmt opt_else // for now this is creating, Now works with singel statments without {}
         {                         
-          if ($6 != nullptr)
+          if ($7 != nullptr)
             $$ = new Node("IfElse", "", yylineno);
           else
             $$ = new Node("If", "", yylineno);
           
           $$->children.push_back($3);
-          $$->children.push_back($5);
-          if ($6 != nullptr)
-            $$->children.push_back($6);
+          $$->children.push_back($6);
+          if ($7 != nullptr)
+            $$->children.push_back($7);
         }
     | PRINT LP expr RP stmtEnd // print statement, print(expr)
         {
@@ -368,7 +375,6 @@ for_header
 stmtEnd
     : NEWLINE
     | NEWLINE stmtEnd
-    | END
     ;
 
 expr    
@@ -553,20 +559,23 @@ expr
   
     ;
 
-expr_list
-    : // empty [] 
-      { $$ = new Node("ExprList", "", yylineno); } 
-    | expr // [expr]
-        {
+expr_list : { $$ = new Node("ExprList", "", yylineno); } 
+          | nonempty_expr_list
+      ;
+
+nonempty_expr_list
+    : expr
+    {
           $$ = new Node("ExprList", "", yylineno);
           $$->children.push_back($1); 
         }
-    | expr_list COMMA expr // [expr, expr, ...]
-        {
+    | nonempty_expr_list COMMA expr
+    {
           $$ = $1;  
           $$->children.push_back($3); 
         }
     ;
+
 %%
 
 
