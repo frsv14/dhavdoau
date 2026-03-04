@@ -65,7 +65,7 @@
 
 .                       {if(!lexical_errors) fprintf(stderr, "Lexical errors found! See the logs below: \n"); fprintf(stderr,"\t@error at line %d. Character %s is not recognized\n", yylineno, yytext);}
 \r?\n                    {if(USE_LEX_ONLY) {printf("NEWLINE \n");} else {return yy::parser::make_NEWLINE();}}
-<<EOF>>                  {return yy::parser::make_END();}
+<<EOF>>                  {if(USE_LEX_ONLY) {printf("END OF FILE \n");} else {return yy::parser::make_END();}}
 
 
 %%

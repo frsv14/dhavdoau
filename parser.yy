@@ -29,7 +29,7 @@
 %token INTKEY FLOATKEY BOOLEANKEY VOIDKEY
 %token <std::string> TRUE FALSE 
 %token LENGTH
-
+%token END 0 "end of file"
 %token <std::string> PLUSOP MINUSOP MULTOP DIVOP POWEROP
 %token AND OR 
 %token NOTOP
@@ -40,7 +40,6 @@
 %token <std::string> LSB RSB LCB RCB
 %token <std::string> COMMA COLON DOT
 %token NEWLINE
-%token END 0 "end of file"
 
 %left ASSIGNMENTOP
 %left OR IF
@@ -68,7 +67,7 @@
 
 %%
 root
-    : program entry stmtEnd END
+    : program entry stmtEnd
         {
           root = $1;
           root->children.push_back($2);
@@ -104,14 +103,14 @@ class_body
         { $$ = new Node("ClassBody", "", yylineno); }
     | class_body var 
         { $$ = $1; $$->children.push_back($2); }
-    | class_body method stmtEnd
+    | class_body method 
         { $$ = $1; $$->children.push_back($2); }
     | class_body NEWLINE
         { $$ = $1; }
     ;
 
 entry
-    : MAIN LP RP COLON INTKEY stmtBl stmtEnd
+    : MAIN LP RP COLON INTKEY stmtBl 
         {
           $$ = new Node("Main", "", yylineno);
           $$->children.push_back($6);
@@ -222,8 +221,7 @@ opt_else
 
 
 stmt
-    : NEWLINE stmt                   { $$ = $2; }
-    | stmtBl  { $$ = $1; } // block statement
+    : stmtBl  { $$ = $1; } // block statement
     | var  stmtEnd  { $$ = $1; } // variable declaration (with optional assignment)
     | expr ASSIGNMENTOP expr stmtEnd // assignment statement
         {                            // name := expr;
@@ -237,7 +235,7 @@ stmt
           $$->children.push_back($3);
           $$->children.push_back($5); 
         }
-    | IF LP expr RP stmt_list opt_else // for now this is creating
+    | IF LP expr RP stmtBl opt_else // for now this is creating
         {                         
           if ($6 != nullptr)
             $$ = new Node("IfElse", "", yylineno);
@@ -384,6 +382,17 @@ expr
       { $$ = new Node("True", "true", yylineno); }
     | FALSE // boolean.false
       { $$ = new Node("False", "false", yylineno); }
+    | ID LP RP
+        {
+          Node* n = new Node("FuncCall", $1, yylineno);
+          $$ = n;
+        }
+    | ID LP expr_list RP
+        {
+          Node* n = new Node("FuncCall", $1, yylineno);
+          n->children.push_back($3);
+          $$ = n;
+        }
     | expr AND expr // logical and
       {
         Node* n = new Node("And", "", yylineno);
