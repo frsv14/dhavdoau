@@ -76,8 +76,7 @@ root
 
 program
     :  { $$ = new Node("Program", "", yylineno); } 
-    | program entry stmtEnd
-        { $$ = $1; $$->children.push_back($2); }
+
     | program class stmtEnd
         { $$ = $1; $$->children.push_back($2); }
     | program stmt stmtEnd  
@@ -152,7 +151,6 @@ param_list
           $1->children.push_back(p);
           $$ = $1;
         }
-    | { $$ = new Node("Params", "", yylineno); }
     ;
 
 opt_assignement
@@ -215,7 +213,7 @@ stmt_list
     ;
 
 opt_else 
-    :  ELSE stmtBl  { $$ = $2; } // optional else statement
+    :  ELSE stmt  { $$ = $2; } // optional else statement
     | { $$ = nullptr; } %prec IF
     ;
 
@@ -235,7 +233,7 @@ stmt
           $$->children.push_back($3);
           $$->children.push_back($5); 
         }
-    | IF LP expr RP stmtBl opt_else // for now this is creating
+    | IF LP expr RP stmt opt_else // for now this is creating
         {                         
           if ($6 != nullptr)
             $$ = new Node("IfElse", "", yylineno);

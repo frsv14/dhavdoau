@@ -1,6 +1,6 @@
 class OP {
 
-  arithmetic : int() {
+  arithmetic() : int {
     volatile b : int := 4
     volatile c : int := 8
     volatile ret : int
@@ -12,7 +12,7 @@ class OP {
     return ret
   }
 
-  relational : boolean() {
+  relational() : boolean {
     a : int := 10
     b : int := 12
     c : boolean := true
