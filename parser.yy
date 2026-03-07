@@ -57,7 +57,7 @@
 %left LP RP 
 %right NOTOP
 
-%type <Node*> program class class_body entry method var type baseType opt_else opt_assignement 
+%type <Node*> program class class_body entry method var type baseType opt_else opt_assignement nonempty_expr_list nonempty_param_list opt_nl
 %type <Node*> stmt stmtBl stmt_list
 %type <Node*> param_list 
 %type <Node*> root
@@ -67,7 +67,7 @@
 
 %%
 root
-    : program entry stmtEnd
+    : program entry END
         {
           root = $1;
           root->children.push_back($2);
@@ -126,25 +126,17 @@ method
           $$->children.push_back($6);
           $$->children.push_back($7);
         }
-    | ID LP RP COLON type stmtBl 
-        {
-          $$ = new Node("Method", $1, yylineno);
-          Node* p = new Node("Params", "", yylineno);
-          $$->children.push_back(p);
-          $$->children.push_back($5);
-          $$->children.push_back($6);
-        }
     ;
 
-param_list
-    : ID COLON type
+nonempty_param_list:
+     ID COLON type
         {
           $$ = new Node("Params", "", yylineno);
           Node* p = new Node("Param", $1, yylineno);
           p->children.push_back($3);
           $$->children.push_back(p);
         }
-    | param_list COMMA ID COLON type
+    | nonempty_param_list COMMA ID COLON type
         {
           Node* p = new Node("Param", $3, yylineno);
           p->children.push_back($5);
@@ -217,6 +209,10 @@ opt_else
     | { $$ = nullptr; } %prec IF
     ;
 
+opt_nl
+  : NEWLINE
+  | 
+; 
 
 stmt
     : stmtBl  { $$ = $1; } // block statement
@@ -235,15 +231,15 @@ stmt
         }
     | IF LP expr RP stmt opt_else // for now this is creating
         {                         
-          if ($6 != nullptr)
+          if ($7 != nullptr)
             $$ = new Node("IfElse", "", yylineno);
           else
             $$ = new Node("If", "", yylineno);
           
           $$->children.push_back($3);
-          $$->children.push_back($5);
-          if ($6 != nullptr)
-            $$->children.push_back($6);
+          $$->children.push_back($6);
+          if ($7 != nullptr)
+            $$->children.push_back($7);
         }
     | PRINT LP expr RP stmtEnd // print statement, print(expr)
         {
@@ -366,7 +362,6 @@ for_header
 stmtEnd
     : NEWLINE
     | NEWLINE stmtEnd
-    | END
     ;
 
 expr    
@@ -380,11 +375,6 @@ expr
       { $$ = new Node("True", "true", yylineno); }
     | FALSE // boolean.false
       { $$ = new Node("False", "false", yylineno); }
-    | ID LP RP
-        {
-          Node* n = new Node("FuncCall", $1, yylineno);
-          $$ = n;
-        }
     | ID LP expr_list RP
         {
           Node* n = new Node("FuncCall", $1, yylineno);
@@ -532,13 +522,6 @@ expr
         }
     | LP expr RP // (expr)
         { $$ = $2; }
-    | expr DOT ID LP RP
-        {
-          Node* n = new Node("MethodCall", "", yylineno);
-          n->children.push_back($1); 
-          n->children.push_back(new Node("Identifier", $3, yylineno)); 
-          $$ = n;
-        }
     | expr DOT ID LP expr_list RP // method.call(expr_list)
         {
           Node* n = new Node("MethodCall", "", yylineno);
@@ -551,20 +534,23 @@ expr
   
     ;
 
-expr_list
-    : // empty [] 
-      { $$ = new Node("ExprList", "", yylineno); } 
-    | expr // [expr]
-        {
+expr_list : { $$ = new Node("ExprList", "", yylineno); } 
+          | nonempty_expr_list
+      ;
+
+nonempty_expr_list
+    : expr
+    {
           $$ = new Node("ExprList", "", yylineno);
           $$->children.push_back($1); 
         }
-    | expr_list COMMA expr // [expr, expr, ...]
-        {
+    | nonempty_expr_list COMMA expr
+    {
           $$ = $1;  
           $$->children.push_back($3); 
         }
     ;
+
 %%
 
 
