@@ -1,4 +1,3 @@
-
 %skeleton "lalr1.cc"
 %defines
 %define parse.error verbose
@@ -58,8 +57,7 @@
 %right NOTOP
 
 %type <Node*> program class class_body entry method var type baseType opt_else opt_assignement nonempty_expr_list nonempty_param_list opt_nl
-%type <Node*> stmt stmtBl stmt_list
-%type <Node*> param_list 
+%type <Node*> stmt stmtBl stmt_list param_list
 %type <Node*> root
 %type <Node*> expr
 %type <Node*> for_header
@@ -120,12 +118,17 @@ method
     : ID LP param_list RP COLON type stmtBl 
         {
           $$ = new Node("Method", $1, yylineno);
-          Node* p = new Node("Params", "", yylineno);
-          p->children.push_back($3);
-          $$->children.push_back(p);
+          $$->children.push_back($3);
           $$->children.push_back($6);
           $$->children.push_back($7);
         }
+    ;
+
+param_list
+    : 
+        { $$ = new Node("Params", "", yylineno); }
+    | nonempty_param_list
+        { $$ = $1; }
     ;
 
 nonempty_param_list:
@@ -231,15 +234,15 @@ stmt
         }
     | IF LP expr RP stmt opt_else // for now this is creating
         {                         
-          if ($7 != nullptr)
+          if ($6 != nullptr)
             $$ = new Node("IfElse", "", yylineno);
           else
             $$ = new Node("If", "", yylineno);
           
           $$->children.push_back($3);
           $$->children.push_back($6);
-          if ($7 != nullptr)
-            $$->children.push_back($7);
+          if ($6 != nullptr)
+            $$->children.push_back($6);
         }
     | PRINT LP expr RP stmtEnd // print statement, print(expr)
         {
