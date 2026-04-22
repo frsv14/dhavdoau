@@ -5,8 +5,10 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#ifdef __unix__
 #include <unistd.h>
 #include <sys/wait.h>
+#endif
 
 using namespace std;
 
