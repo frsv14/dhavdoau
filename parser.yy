@@ -40,6 +40,7 @@
 %token <std::string> COMMA COLON DOT
 %token NEWLINE
 
+%right NEWLINE
 %left ASSIGNMENTOP
 %left OR IF
 %left AND
@@ -56,7 +57,7 @@
 %left LP RP 
 %right NOTOP
 
-%type <Node*> program class class_body entry method var type baseType opt_else opt_assignement nonempty_expr_list nonempty_param_list opt_nl
+%type <Node*> program class class_body entry method var type baseType opt_else opt_assignement nonempty_expr_list nonempty_param_list
 %type <Node*> stmt stmtBl stmt_list param_list
 %type <Node*> root
 %type <Node*> expr
@@ -109,7 +110,7 @@ class_body
 entry
     : MAIN LP RP COLON INTKEY stmtBl 
         {
-          $$ = new Node("Main", "", yylineno);
+          $$ = new Node("Main", "main", yylineno);
           $$->children.push_back($6);
         }
     ;
@@ -212,11 +213,6 @@ opt_else
     | { $$ = nullptr; } %prec IF
     ;
 
-opt_nl
-  : NEWLINE
-  | 
-; 
-
 stmt
     : stmtBl  { $$ = $1; } // block statement
     | var  stmtEnd  { $$ = $1; } // variable declaration (with optional assignment)
@@ -240,7 +236,7 @@ stmt
             $$ = new Node("If", "", yylineno);
           
           $$->children.push_back($3);
-          $$->children.push_back($6);
+          $$->children.push_back($5);
           if ($6 != nullptr)
             $$->children.push_back($6);
         }

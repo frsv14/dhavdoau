@@ -1,9 +1,21 @@
 #include <iostream>
 #include "parser.tab.hh"
-#include "SymbolTabel.h"
 
-extern Node* root;
-extern FILE* yyin;
+#include "symbol_table/SymbolTable.h"
+//#include "symbol_table/Record.h"
+//#include "symbol_table/Variable.h"
+//#include "symbol_table/Method.h"
+//#include "symbol_table/Class.h"
+#include "semantic_analysis/SemanticAnalysis.h"
+#include "intermediate_representation/Tac.h"
+#include "intermediate_representation/Expression.h"
+#include "intermediate_representation/Jump.h"
+#include "intermediate_representation/MethodCall.h"
+#include "intermediate_representation/CondJump.h"
+#include "intermediate_representation/BBlock.h"
+
+extern Node *root;
+extern FILE *yyin;
 extern int yylineno;
 extern int lexical_errors;
 extern yy::parser::symbol_type yylex();
@@ -65,10 +77,48 @@ int main(int argc, char **argv)
                 root->print_tree();
                 root->generate_tree();
 
-                SymbolTableBuilder builder;
-                builder.build(root);
+                //test
+                std::cout << "\n" << "----- SYMBOLTABLE START -----" << "\n" << std::endl;
+                SymbolTable st;
+                st.createTable(root);
+                /*
+                st.put("test1", new Variable("test", "string"));
+                st.put("test2", new Variable("num", "int"));
+                st.put("testMethod", new Method("testMethod", "void"));
+                st.put("testClass", new AClass("TestClass", "TestClass"));
+                */
+                st.exportToDot();
+                st.printTable();
+                //test end
 
-                builder.getTable().print();
+                std::cout << "\n" << "----- SEMANTIC START -----" << "\n" << std::endl;
+                SemanticAnalysis semantic;
+                semantic.traversal(st, root, st.getRootScope());
+
+                std::cout << "\n" << "----- INTERMEDIATE START -----" << "\n" << std::endl;
+                Expression* ex = new Expression("PLUS", "$1", "$2", "x");
+                CondJump* cj = new CondJump("iffalse", "X", "L1" );
+                Jump* jump = new Jump("L2");
+                MethodCall* mc = new MethodCall("f", "N", "x");
+
+                ex->dump();
+                cj->dump();
+                jump->dump();
+                mc->dump();
+
+                std::cout << "\n" << "----- BBLOCK START -----" << "\n" << std::endl;
+                BBlock* bblock = new BBlock();
+                bblock->addTacInstructions(ex);
+                bblock->addTacInstructions(cj);
+                bblock->addTacInstructions(jump);
+                bblock->addTacInstructions(mc);
+                bblock->printAllTacInstructions();
+
+                std::cout << "\n" << "----- BBLOCK1 START -----" << "\n" << std::endl;
+                BBlock* bblock1 = new BBlock();
+                bblock1->setTrueExit(bblock1);
+                bblock1->addTacInstructions(ex);
+                bblock1->printAllTacInstructions();
             }
             catch (...)
             {

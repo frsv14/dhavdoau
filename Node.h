@@ -12,9 +12,12 @@
 
 using namespace std;
 
+class Scope;
 
 class Node {
 public:
+	Scope* scope = nullptr;
+	
 	int id, lineno;
 	string type, value;
 	list<Node*> children;

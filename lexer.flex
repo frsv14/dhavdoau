@@ -51,8 +51,8 @@
 "continue"              {if(USE_LEX_ONLY) {printf("CONTINUEKEY ");} else {return yy::parser::make_CONTINUE();}}
 "volatile"              {if(USE_LEX_ONLY) {printf("VOLATILEKEY ");} else {return yy::parser::make_VOLATILE();}}
 "lenght"                {if(USE_LEX_ONLY) {printf("LENGHTKEY ");} else {return yy::parser::make_LENGTH ();}}
-"true"                  {if(USE_LEX_ONLY) {printf("LENGHTKEY ");} else {return yy::parser::make_TRUE(yytext);}}
-"false"                 {if(USE_LEX_ONLY) {printf("LENGHTKEY ");} else {return yy::parser::make_FALSE(yytext);}}
+"true"                  {if(USE_LEX_ONLY) {printf("TRUE ");} else {return yy::parser::make_TRUE(yytext);}}
+"false"                 {if(USE_LEX_ONLY) {printf("FALSE ");} else {return yy::parser::make_FALSE(yytext);}}
 
 0|[1-9][0-9]*           {if(USE_LEX_ONLY) {printf("INT ");} else {return yy::parser::make_INT(yytext);}}
 [0-9]+"."[0-9]+         {if (USE_LEX_ONLY) {printf("FLOAT ");} else {return yy::parser::make_FLOAT(yytext);}}
