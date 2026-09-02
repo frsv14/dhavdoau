@@ -108,6 +108,7 @@ int main(int argc, char **argv)
 
                 std::cout << "\n" << "----- BBLOCK START -----" << "\n" << std::endl;
                 BBlock* bblock = new BBlock();
+                bblock->setBBlockName("BBlock_0");
                 bblock->addTacInstructions(ex);
                 bblock->addTacInstructions(cj);
                 bblock->addTacInstructions(jump);
@@ -116,9 +117,21 @@ int main(int argc, char **argv)
 
                 std::cout << "\n" << "----- BBLOCK1 START -----" << "\n" << std::endl;
                 BBlock* bblock1 = new BBlock();
-                bblock1->setTrueExit(bblock1);
+                bblock1->setBBlockName("BBlock_1");
                 bblock1->addTacInstructions(ex);
                 bblock1->printAllTacInstructions();
+
+                std::cout << "\n" << "----- BBLOCK2 START -----" << "\n" << std::endl;
+                BBlock* bblock2 = new BBlock();
+                bblock2->setBBlockName("BBlock_2");
+                bblock2->addTacInstructions(mc);
+                bblock2->addTacInstructions(cj);
+                bblock2->printAllTacInstructions();
+
+                bblock->setTrueExit(bblock1);
+                bblock->setFalseExit(bblock2);
+
+                bblock->generate_tree();
             }
             catch (...)
             {

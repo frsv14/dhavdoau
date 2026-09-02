@@ -12,5 +12,6 @@ make compiler
 ./compiler ./test_files/$type/$test.cpm
 make tree
 make symboltable
+make cfg
 
 echo "Done!"

@@ -16,6 +16,7 @@ public:
     std::string getRhs() {return this->rhs;}
     std::string getResult() {return this->result;}
     virtual void dump() = 0;
+    virtual std::string getTacString() = 0;
 };
 
 #endif
