@@ -10,14 +10,14 @@
 #include <sys/wait.h>
 #endif
 
+#include "./intermediate_representation/BBlock.h"
+#include "./intermediate_representation/Tac.h"
+#include "./intermediate_representation/Expression.h"
+
 using namespace std;
 
-class Scope;
-
 class Node {
-public:
-	Scope* scope = nullptr;
-	
+public:	
 	int id, lineno;
 	string type, value;
 	list<Node*> children;
@@ -59,7 +59,6 @@ public:
 		  *outStream << "n" << id << " -> n" << (*i)->id << endl;
 	  }
   }
-
 };
 
 #endif

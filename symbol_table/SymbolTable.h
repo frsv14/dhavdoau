@@ -74,6 +74,7 @@ public:
         current = this->root;
     }
     Scope* getRootScope() {return root;}
+    Scope* getCurrentScope() {return current;}
     void setCurrentScope(Scope* currentScope) {current = currentScope;}
     void enterScope() {current = current->nextChild();}
     void exitScope() {current = current->getParentScope();}
@@ -98,8 +99,6 @@ public:
             put(node->value, aClass);
 
             enterScope();
-            node->scope = current;
-
             for (auto child : node->children) 
                 createTable(child, aClass);
             exitScope();
@@ -126,7 +125,6 @@ public:
             }
 
             enterScope();
-            node->scope = current;
 
             if (!node->children.empty()) {
                 Node* paramsNode = node->children.front();
@@ -165,7 +163,7 @@ public:
             put(node->value, variable);
 
             if (node->type == "VarDeclAssign") {
-                for (auto i = std::next(node->children.begin()); i != node->children.end(); ++i) {
+                for (auto i = std::next(node->children.begin()); i != node->children.end(); i++) {
                     createTable(*i);
                 }
             }
@@ -173,7 +171,6 @@ public:
 
         if (node->type == "Block") {
             enterScope();
-            node->scope = current;
 
             for (auto child : node->children) 
                 createTable(child);

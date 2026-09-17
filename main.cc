@@ -93,7 +93,8 @@ int main(int argc, char **argv)
 
                 std::cout << "\n" << "----- SEMANTIC START -----" << "\n" << std::endl;
                 SemanticAnalysis semantic;
-                semantic.traversal(st, root, st.getRootScope());
+                st.resetTable();
+                semantic.traversal(st, root);
 
                 std::cout << "\n" << "----- INTERMEDIATE START -----" << "\n" << std::endl;
                 Expression* ex = new Expression("PLUS", "$1", "$2", "x");

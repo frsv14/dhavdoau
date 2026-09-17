@@ -17,7 +17,7 @@ public:
             put(node->value, variable);
 
             if (node->type == "VarDeclAssign") {
-                for (auto i = std::next(node->children.begin()); i != node->children.end(); ++i) {
+                for (auto i = std::next(node->children.begin()); i != node->children.end(); i++) {
                     createCFG(*i);
                 }
             }

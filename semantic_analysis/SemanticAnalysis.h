@@ -13,6 +13,7 @@
 #include "../symbol_table/Scope.h"
 #include "../symbol_table/Class.h"
 #include "../symbol_table/Method.h"
+#include "../symbol_table/Scope.h"
 
 //TODO: FIX THE EVALUATE FUNCTION SO THAT IT TAKES ONE NODE AND EVALUATES ITS TYPE,
 //      FOR EXAMPLE, SEND A CHILD NODE, IF ITS ALREADY HAS ITS TYPE DEFINED THEN JUST SEND IT BACK, IF IT IS AN EXPRESSION LIKE +, -, *, / AND SO ON,
@@ -22,100 +23,104 @@
 class SemanticAnalysis {
 private:
     std::string currentMethod;
+    bool first = true;
 public:
-    void traversal(SymbolTable& st, Node* currentNode, Scope* currentScope) {
-    Scope* nextScope = currentScope;
 
-    if (currentNode->type == "Block" || currentNode->type == "Method" || currentNode->type == "Main") {
-        nextScope = currentNode->scope;
-        if (currentNode->type == "Method" || currentNode->type == "Main") {
-            currentMethod = currentNode->value;
-        }
-        st.setCurrentScope(nextScope);
-    }
-    
-    // TODO: HANDLE IF EXPRESSION LIST IS NOT EMPTY!!!
-    if (currentNode->type == "MethodCall") {
-        int count = 0;
-        std::string type;
-        std::cout << "----- MethodCall children -----" << std::endl;
-
-        for (auto child : currentNode->children) {
-            if (count == 0) {
-                type = st.lookup(child->value)->getType();
-                count++;
-            }
-            else if (count == 1) {
-                AClass* currentClass = dynamic_cast<AClass*>(st.lookup(type));
-                duplicateIdentifier(currentScope, child);
-
-                if (currentClass->lookupMethod(child->value) == nullptr) 
-                    std::cout << "Undeclared identifier " << child->value << std::endl; 
-                count++;
-            }
-
-        std::cout << "-------------------------------" << std::endl;
-        }
-        return;
-    }
-
-    if (currentNode->type == "Return") {
-        std::cout << "----- Return -----" << std::endl;
-        Node* firstChild = (*currentNode->children.begin());
-        std::string type = firstChild->type;
-        if (type == "Add" || type == "Sub" || type == "Mul" || type == "Div" || type == "Lt" || type == "Gt")
-            type = evaluate(currentScope, firstChild, st); // TODO: THIS CURRENTLY WONT WORK SINCE EVALUATE EXPECTES 2 CHILD NODES IF ITS A MATH EXPRESSION LIKE ADD OR SOMETHING
+    void traversal(SymbolTable& st, Node* currentNode) {
         
-        if (st.lookup(currentMethod)->getType() == "IntType" && type != "IntLiteral")
+        if (currentNode->type == "Class" || currentNode->type == "Block" || currentNode->type == "Method" || currentNode->type == "Main") {
+            st.enterScope();
+            if (currentNode->type == "Method" || currentNode->type == "Main") {
+                currentMethod = currentNode->value;
+            }
+        }
+        
+        // TODO: HANDLE IF EXPRESSION LIST IS NOT EMPTY!!!
+        if (currentNode->type == "MethodCall") {
+            int count = 0;
+            std::string type;
+            std::cout << "----- MethodCall children -----" << std::endl;
+
+            for (auto child : currentNode->children) {
+                if (count == 0) {
+                    type = st.lookup(child->value)->getType();
+                    count++;
+                }
+                else if (count == 1) {
+                    AClass* currentClass = dynamic_cast<AClass*>(st.lookup(type));
+                    duplicateIdentifier(child, st);
+
+                    if (currentClass->lookupMethod(child->value) == nullptr) 
+                        std::cout << "Undeclared identifier " << child->value << std::endl; 
+                    count++;
+                }
+
+            std::cout << "-------------------------------" << std::endl;
+            }
+            return;
+        }
+
+        if (currentNode->type == "Return") {
+            std::cout << "----- Return -----" << std::endl;
+            Node* firstChild = (*currentNode->children.begin());
+            std::string type = firstChild->type;
+            if (type == "Add" || type == "Sub" || type == "Mul" || type == "Div" || type == "Lt" || type == "Gt")
+                type = evaluate(firstChild, st); // TODO: THIS CURRENTLY WONT WORK SINCE EVALUATE EXPECTES 2 CHILD NODES IF ITS A MATH EXPRESSION LIKE ADD OR SOMETHING
+            
+            if (st.lookup(currentMethod)->getType() == "IntType" && type != "IntLiteral")
+                    std::cout << "Type missmatch, Expecting " << st.lookup(currentMethod)->getType() << " but got " << type << std::endl;
+            else if (st.lookup(currentMethod)->getType() == "FloatType" && (type != "FloatLiteral" && type != "IntLiteral"))
                 std::cout << "Type missmatch, Expecting " << st.lookup(currentMethod)->getType() << " but got " << type << std::endl;
-        else if (st.lookup(currentMethod)->getType() == "FloatType" && (type != "FloatLiteral" && type != "IntLiteral"))
-            std::cout << "Type missmatch, Expecting " << st.lookup(currentMethod)->getType() << " but got " << type << std::endl;
-        std::cout << "------------------" << std::endl;
-    }
+            std::cout << "------------------" << std::endl;
+        }
 
-    if (currentNode->type == "If" || currentNode->type == "IfElse") {
-        std::cout << "----- If/IfElse children -----" << std::endl;
-        std::string type = evaluate(currentScope, (*currentNode->children.begin()), st);
-        if (type != "IntType" && type != "FloatType" && type != "IntLiteral" && type != "FloatLiteral")
-            std::cout << "Error: Did not get a type int or float at " << to_string(currentNode->lineno) << std::endl;
+        if (currentNode->type == "If" || currentNode->type == "IfElse") {
+            std::cout << "----- If/IfElse children -----" << std::endl;
+            std::string type = evaluate((*currentNode->children.begin()), st);
+            if (type != "IntType" && type != "FloatType" && type != "IntLiteral" && type != "FloatLiteral")
+                std::cout << "Error: Did not get a type int or float at " << to_string(currentNode->lineno) << std::endl;
 
-        std::cout << "------------------------------" << std::endl;
-    }
-    
-    if (currentNode->type == "Identifier") {
-        std::cout << "----- Identifier -----" << std::endl;
-        undeclaredIdentifier(st, currentNode);
-        duplicateIdentifier(currentScope, currentNode);
-        std::cout << "----------------------------------" << std::endl;
-    }
+            std::cout << "------------------------------" << std::endl;
+        }
+        
+        if (currentNode->type == "Identifier") {
+            std::cout << "----- Identifier -----" << std::endl;
+            undeclaredIdentifier(st, currentNode);
+            duplicateIdentifier(currentNode, st);
+            std::cout << "----------------------------------" << std::endl;
+        }
 
-    if (currentNode->type == "VarDecl") {
-        std::cout << "----- VarDecl -----" << std::endl;
-        duplicateIdentifier(currentScope, currentNode);
-        std::cout << "----------------------------------" << std::endl;
-    }
+        if (currentNode->type == "VarDecl") {
+            std::cout << "----- VarDecl -----" << std::endl;
+            duplicateIdentifier(currentNode, st);
+            std::cout << "----------------------------------" << std::endl;
+        }
 
-    if (currentNode->type == "VarDeclAssign") {
-        std::cout << "----- VarDeclAssign children -----" << std::endl;
-        auto i = currentNode->children.begin();
-        std::string lhs = evaluate(currentScope, *i, st);
-        i++;
-        std::string rhs = evaluate(currentScope, *i, st);
+        if (currentNode->type == "VarDeclAssign") {
+            std::cout << "----- VarDeclAssign children -----" << std::endl;
+            auto i = currentNode->children.begin();
+            std::string lhs = evaluate(*i, st);
+            i++;
+            std::string rhs = evaluate(*i, st);
 
-        if (lhs == "IntType" && rhs != "IntLiteral")
-            std::cout << "Type missmatch, Expecting " << lhs << " but got " << rhs << std::endl;
-        else if (lhs == "FloatType" && (rhs != "FloatLiteral" && rhs != "IntLiteral"))
-            std::cout << "Type missmatch, Expecting " << lhs << " but got " << rhs << std::endl;
-        else if (lhs == "BoolType" && (rhs != "True" && rhs != "False"))
-            std::cout << "Type missmatch, Expecting " << lhs << " but got " << rhs << std::endl;
-        std::cout << "----------------------------------" << std::endl;
-    }
+            if (lhs == "IntType" && rhs != "IntLiteral")
+                std::cout << "Type missmatch, Expecting " << lhs << " but got " << rhs << std::endl;
+            else if (lhs == "FloatType" && (rhs != "FloatLiteral" && rhs != "IntLiteral"))
+                std::cout << "Type missmatch, Expecting " << lhs << " but got " << rhs << std::endl;
+            else if (lhs == "BoolType" && (rhs != "True" && rhs != "False"))
+                std::cout << "Type missmatch, Expecting " << lhs << " but got " << rhs << std::endl;
+            std::cout << "----------------------------------" << std::endl;
+        }
 
-    if (!currentNode->children.empty()) {
-        for (auto child : currentNode->children)
-            traversal(st, child, nextScope);
+        if (!currentNode->children.empty()) {
+            for (auto child : currentNode->children)
+                traversal(st, child);
+        }
+
+        if (currentNode->type == "Class" || currentNode->type == "Block" || currentNode->type == "Method" || currentNode->type == "Main") {
+            st.exitScope();
+        }
     }
-}
 
     void undeclaredIdentifier(SymbolTable& st, Node* currentNode) {
         std::string type = st.lookup(currentNode->value)->getType();
@@ -125,8 +130,8 @@ public:
             std::cout << "Undeclared identifier " << currentNode->value << std::endl; 
     }
 
-    void duplicateIdentifier(Scope* currentScope, Node* currentNode) {
-        std::multimap<std::string, Record*> records = currentScope->getRecords();
+    void duplicateIdentifier(Node* currentNode, SymbolTable& st) {
+        std::multimap<std::string, Record*> records = st.getCurrentScope()->getRecords();
         int count = 0;
 
         for (auto it : records) {
@@ -137,17 +142,19 @@ public:
             std::cout << "Duplicated identifier " << currentNode->value << std::endl;
     }
 
-    std::string evaluate(Scope* currentScope, Node* currentNode, SymbolTable& st) {
+    std::string evaluate(Node* currentNode, SymbolTable& st) {
         std::string retType; 
 
         if (currentNode->type == "Identifier") {
+            if (st.lookup(currentNode->value) == nullptr)
+                return "Error";
             retType = st.lookup(currentNode->value)->getType();
         }
         else
             retType = currentNode->type;
 
         if (retType == "Add" || retType == "Sub" || retType == "Mul" || retType == "Div" || retType == "Lt" || retType == "Gt" || retType == "Pow") {
-            std::string result = expressionEvaluate(currentNode, st, currentScope);
+            std::string result = expressionEvaluate(currentNode, st);
             if (result == "Error")
                 return "Error";
 
@@ -160,7 +167,7 @@ public:
         return retType;
     }
 
-    std::string expressionEvaluate(Node* currentNode, SymbolTable& st, Scope* currentScope) {
+    std::string expressionEvaluate(Node* currentNode, SymbolTable& st) {
         // Recursivley check expressions correctness
         // Ex. 1 + 1, 1 - 4, 1 + false, 5 / (2 + 5)
         // must check both left and right child nodes because they could contain another expression which needs to be evaluated
@@ -189,11 +196,11 @@ public:
         }
 
         auto i = currentNode->children.begin();
-        std::string lhs = expressionEvaluate(*i, st, currentScope);
+        std::string lhs = expressionEvaluate(*i, st);
         if (lhs == "Error")
             return "Error";
         i++;
-        std::string rhs = expressionEvaluate(*i, st, currentScope);
+        std::string rhs = expressionEvaluate(*i, st);
         if (rhs == "Error")
             return "Error";
 
