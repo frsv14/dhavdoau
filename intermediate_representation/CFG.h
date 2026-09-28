@@ -2,30 +2,46 @@
 #define CFG_H
 
 #include "../Node.h"
-#include "../symbol_table/Class.h"
+#include "./BBlock.h"
+#include "./Jump.h"
 
 class Cfg {
 private:
-    int currentBlock;
+    int currentBlockNum = 1;
 public:
-    void createCFG(Node* node, AClass* currentClass = nullptr) {
+    void createCFG(Node* node, BBlock* currentBlock) {
         if (!node) return;
 
         if (node->type == "VarDecl" || node->type == "VarDeclAssign") {
-            Node* nodeType = node->children.empty() ? nullptr : node->children.front();
-            Variable* variable = new Variable(node->value, varType);
-            put(node->value, variable);
-
             if (node->type == "VarDeclAssign") {
                 for (auto i = std::next(node->children.begin()); i != node->children.end(); i++) {
-                    createCFG(*i);
+                    createCFG(*i, currentBlock);
                 }
             }
+        }
+
+        if (node->type == "IfElse") {
+            Node* nodeType = node->children.empty() ? nullptr : node->children.front();
+            
+            BBlock* bblockTrue = new BBlock();
+            std::string blockTrueName = "Block_" + std::to_string(currentBlockNum + 1);
+            bblockTrue->setBBlockName(blockTrueName);
+            currentBlockNum++;
+
+            BBlock* bblockFalse = new BBlock();
+            std::string blockFalseName = "Block_" + std::to_string(currentBlockNum + 1);
+            bblockFalse->setBBlockName(blockFalseName);
+            currentBlockNum++;
+
+            CondJump* condJump = new CondJump("iffalse", nodeType->value, blockFalseName);
+            currentBlock->addTacInstructions(condJump);
+            currentBlock->setTrueExit(bblockTrue);
+            currentBlock->setFalseExit(bblockFalse);
         }
         
 
         for (auto child : node->children) 
-            createCFG(child, currentClass);
+            createCFG(child, currentBlock);
     }
 };
 
