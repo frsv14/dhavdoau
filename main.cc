@@ -13,6 +13,7 @@
 #include "intermediate_representation/MethodCall.h"
 #include "intermediate_representation/CondJump.h"
 #include "intermediate_representation/BBlock.h"
+#include "intermediate_representation/CFG.h"
 
 extern Node *root;
 extern FILE *yyin;
@@ -107,6 +108,7 @@ int main(int argc, char **argv)
                 jump->dump();
                 mc->dump();
 
+                /*
                 std::cout << "\n" << "----- BBLOCK START -----" << "\n" << std::endl;
                 BBlock* bblock = new BBlock();
                 bblock->setBBlockName("BBlock_0");
@@ -131,6 +133,18 @@ int main(int argc, char **argv)
 
                 bblock->setTrueExit(bblock1);
                 bblock->setFalseExit(bblock2);
+                */
+
+                
+                Cfg cfg;
+                BBlock* bblock = new BBlock();
+                /*
+                bblock->setBBlockName("Block_0");
+                cfg.createCFG(root, bblock);
+                */
+                bblock->setBBlockName("Block_0");
+                root->genIR(bblock);
+                bblock->printAllTacInstructions();
 
                 bblock->generate_tree();
             }

@@ -231,9 +231,9 @@ stmt
     | IF LP expr RP stmt opt_else // for now this is creating
         {                         
           if ($6 != nullptr)
-            $$ = new Node("IfElse", "", yylineno);
+            $$ = new IfElseStmt("IfElse", "", yylineno);
           else
-            $$ = new Node("If", "", yylineno);
+            $$ = new IfStmt("If", "", yylineno);
           
           $$->children.push_back($3);
           $$->children.push_back($5);
@@ -365,15 +365,15 @@ stmtEnd
 
 expr    
     : ID //name
-      { $$ = new Node("Identifier", $1, yylineno); }  
+      { $$ = new Identifier("Identifier", $1, yylineno); }  
     |INT // interger
-      { $$ = new Node("IntLiteral", $1, yylineno); }
+      { $$ = new Integer("IntLiteral", $1, yylineno); }
     | FLOAT // float
-      { $$ = new Node("FloatLiteral", $1, yylineno); }
+      { $$ = new Float("FloatLiteral", $1, yylineno); }
     | TRUE // boolean.true
-      { $$ = new Node("True", "true", yylineno); }
+      { $$ = new Boolean("True", "true", yylineno); }
     | FALSE // boolean.false
-      { $$ = new Node("False", "false", yylineno); }
+      { $$ = new Boolean("False", "false", yylineno); }
     | ID LP expr_list RP
         {
           Node* n = new Node("FuncCall", $1, yylineno);
@@ -402,35 +402,35 @@ expr
       }
     | expr POWEROP expr // power operator
       {
-        Node* n = new Node("Pow", "", yylineno);
+        Node* n = new PowExpression("Pow", "", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
     | expr MULTOP expr // multiplication
       {
-        Node* n = new Node("Mul", "", yylineno);
+        Node* n = new MulExpression("Mul", "", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
     | expr DIVOP expr // division
       {
-        Node* n = new Node("Div", "", yylineno);
+        Node* n = new DivExpression("Div", "", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
     | expr PLUSOP expr // addition
       {
-        Node* n = new Node("Add", "", yylineno);
+        Node* n = new AddExpression("Add", "", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
     | expr MINUSOP expr // subtraction
       {
-        Node* n = new Node("Sub", "", yylineno);
+        Node* n = new SubExpression("Sub", "", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;

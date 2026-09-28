@@ -10,6 +10,9 @@
 #include <sys/wait.h>
 #endif
 
+#include <random>
+#include <string>
+
 #include "./intermediate_representation/BBlock.h"
 #include "./intermediate_representation/Tac.h"
 #include "./intermediate_representation/Expression.h"
@@ -25,8 +28,43 @@ public:
 	Node()
 	{
 		type = "uninitialised";
-		value = "uninitialised"; }   // Bison needs this.
-  
+		value = "uninitialised"; 
+	}   // Bison needs this.
+	std::string getValue() { return value; }
+	virtual std::string genIR(BBlock *currentBlock) {
+		for (auto i = children.begin(); i != children.end(); i++)
+			(*i)->genIR(currentBlock);
+		return "";
+	}
+
+// GenerateRandomString is temporary until a better solution is implemented.
+string generateRandomString()
+{		
+	int length = 8; // Length of the random string
+    // Define the list of possible characters
+    const string CHARACTERS
+        = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv"
+          "wxyz0123456789";
+
+    // Create a random number generator
+    random_device rd;
+    mt19937 generator(rd());
+
+    // Create a distribution to uniformly select from all
+    // characters
+    uniform_int_distribution<> distribution(
+        0, CHARACTERS.size() - 1);
+
+    // Generate the random string
+    string random_string;
+    for (int i = 0; i < length; ++i) {
+        random_string
+            += CHARACTERS[distribution(generator)];
+    }
+
+    return random_string;
+}
+	
 	void print_tree(int depth=0) {
 		for(int i=0; i<depth; i++)
 		cout << "  ";
@@ -59,6 +97,162 @@ public:
 		  *outStream << "n" << id << " -> n" << (*i)->id << endl;
 	  }
   }
+};
+
+class SubExpression : public Node {
+private:
+public:
+	SubExpression(string t, string v, int l) : Node(t, v, l) {}
+	~SubExpression() {}
+	std::string genIR(BBlock *currentBlock) override {
+		std::string name = generateRandomString(); //generate a unique name
+		auto i = children.begin();
+		std::string lhs_name = (*i)->genIR(currentBlock);
+		i++;
+		std::string rhs_name = (*i)->genIR(currentBlock);
+		Tac* in = new Expression("-", lhs_name, rhs_name, name);
+		currentBlock->addTacInstructions(in);
+
+		std::cout << "lhs_name: " << lhs_name << std::endl;
+		std::cout << "rhs_name: " << rhs_name << std::endl;
+		return name;
+	}
+};
+
+class AddExpression : public Node {
+private:
+public:
+	AddExpression(string t, string v, int l) : Node(t, v, l) {}
+	~AddExpression() {}
+	std::string genIR(BBlock *currentBlock) override {
+		std::string name = generateRandomString(); //generate a unique name
+		auto i = children.begin();
+		std::string lhs_name = (*i)->genIR(currentBlock);
+		i++;
+		std::string rhs_name = (*i)->genIR(currentBlock);
+		Tac* in = new Expression("+", lhs_name, rhs_name, name);
+		currentBlock->addTacInstructions(in);
+		return name;
+	}
+};
+
+class DivExpression : public Node {
+private:
+public:
+	DivExpression(string t, string v, int l) : Node(t, v, l) {}
+	~DivExpression() {}
+	std::string genIR(BBlock *currentBlock) override {
+		std::string name = generateRandomString(); //generate a unique name
+		auto i = children.begin();
+		std::string lhs_name = (*i)->genIR(currentBlock);
+		i++;
+		std::string rhs_name = (*i)->genIR(currentBlock);
+		Tac* in = new Expression("/", lhs_name, rhs_name, name);
+		currentBlock->addTacInstructions(in);
+		return name;
+	}
+};
+
+class MulExpression : public Node {
+private:
+public:
+	MulExpression(string t, string v, int l) : Node(t, v, l) {}
+	~MulExpression() {}
+	std::string genIR(BBlock *currentBlock) override {
+		std::string name = generateRandomString(); //generate a unique name
+		auto i = children.begin();
+		std::string lhs_name = (*i)->genIR(currentBlock);
+		i++;
+		std::string rhs_name = (*i)->genIR(currentBlock);
+		Tac* in = new Expression("*", lhs_name, rhs_name, name);
+		currentBlock->addTacInstructions(in);
+		return name;
+	}
+};
+
+class PowExpression : public Node {
+private:
+public:
+	PowExpression(string t, string v, int l) : Node(t, v, l) {}
+	~PowExpression() {}
+	std::string genIR(BBlock *currentBlock) override {
+		std::string name = generateRandomString(); //generate a unique name
+		auto i = children.begin();
+		std::string lhs_name = (*i)->genIR(currentBlock);
+		i++;
+		std::string rhs_name = (*i)->genIR(currentBlock);
+		Tac* in = new Expression("^", lhs_name, rhs_name, name);
+		currentBlock->addTacInstructions(in);
+		return name;
+	}
+};
+
+class Identifier : public Node {
+private:
+public:
+	Identifier(string t, string v, int l) : Node(t, v, l) {}
+	~Identifier() {}
+	std::string genIR(BBlock *currentBlock) override {
+		return this->getValue(); // return the name of the identifier
+	}
+};
+
+class Integer : public Node {
+private:
+public:
+	Integer(string t, string v, int l) : Node(t, v, l) {}
+	~Integer() {}
+	std::string genIR(BBlock *currentBlock) override {
+		return this->getValue(); // return the value of the integer
+	}
+};
+
+class Float : public Node {
+private:
+public:
+	Float(string t, string v, int l) : Node(t, v, l) {}
+	~Float() {}
+	std::string genIR(BBlock *currentBlock) override {
+		return this->getValue(); // return the value of the float
+	}
+};
+
+class Boolean : public Node {
+private:
+public:
+	Boolean(string t, string v, int l) : Node(t, v, l) {}
+	~Boolean() {}
+	std::string genIR(BBlock *currentBlock) override {
+		return this->getValue(); // return the value of the boolean
+	}
+};
+
+class IfStmt : public Node {
+private:
+public:
+	IfStmt(string t, string v, int l) : Node(t, v, l) {}
+	~IfStmt() {}
+	std::string genIR(BBlock *currentBlock) override {
+		std::string name = generateRandomString(); //generate a unique name
+		
+		// Code for IfStmt goes here
+
+		return name;
+	}
+};
+
+class IfElseStmt : public Node {
+private:
+public:
+	IfElseStmt(string t, string v, int l) : Node(t, v, l) {}
+	~IfElseStmt() {}
+	std::string genIR(BBlock *currentBlock) override {
+		std::string name = generateRandomString(); //generate a unique name
+		
+		// Code for IfElseStmt goes here
+		
+		return name;
+	}
 };
 
 #endif
