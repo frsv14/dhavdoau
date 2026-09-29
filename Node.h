@@ -19,6 +19,11 @@
 
 using namespace std;
 
+struct IRResult {
+	std::string value;
+	BBlock* block;
+};
+
 class Node {
 public:	
 	int id, lineno;
@@ -31,16 +36,18 @@ public:
 		value = "uninitialised"; 
 	}   // Bison needs this.
 	std::string getValue() { return value; }
-	virtual std::string genIR(BBlock *currentBlock) {
-		for (auto i = children.begin(); i != children.end(); i++)
-			(*i)->genIR(currentBlock);
-		return "";
+	virtual IRResult genIR(BBlock *currentBlock) {
+		for (auto i = children.begin(); i != children.end(); i++) {
+			IRResult result = (*i)->genIR(currentBlock);
+			currentBlock = result.block;
+		}
+		return {"", currentBlock};
 	}
 
 // GenerateRandomString is temporary until a better solution is implemented.
 string generateRandomString()
 {		
-	int length = 8; // Length of the random string
+	int length = 2; // Length of the random string
     // Define the list of possible characters
     const string CHARACTERS
         = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv"
@@ -62,7 +69,7 @@ string generateRandomString()
             += CHARACTERS[distribution(generator)];
     }
 
-    return random_string;
+    return "Block_" + random_string;
 }
 	
 	void print_tree(int depth=0) {
@@ -104,18 +111,18 @@ private:
 public:
 	SubExpression(string t, string v, int l) : Node(t, v, l) {}
 	~SubExpression() {}
-	std::string genIR(BBlock *currentBlock) override {
+	IRResult genIR(BBlock *currentBlock) override {
 		std::string name = generateRandomString(); //generate a unique name
 		auto i = children.begin();
-		std::string lhs_name = (*i)->genIR(currentBlock);
+		std::string lhs_name = (*i)->genIR(currentBlock).value;
 		i++;
-		std::string rhs_name = (*i)->genIR(currentBlock);
+		std::string rhs_name = (*i)->genIR(currentBlock).value;
 		Tac* in = new Expression("-", lhs_name, rhs_name, name);
 		currentBlock->addTacInstructions(in);
 
 		std::cout << "lhs_name: " << lhs_name << std::endl;
 		std::cout << "rhs_name: " << rhs_name << std::endl;
-		return name;
+		return {name, currentBlock};
 	}
 };
 
@@ -124,15 +131,15 @@ private:
 public:
 	AddExpression(string t, string v, int l) : Node(t, v, l) {}
 	~AddExpression() {}
-	std::string genIR(BBlock *currentBlock) override {
+	IRResult genIR(BBlock *currentBlock) override {
 		std::string name = generateRandomString(); //generate a unique name
 		auto i = children.begin();
-		std::string lhs_name = (*i)->genIR(currentBlock);
+		std::string lhs_name = (*i)->genIR(currentBlock).value;
 		i++;
-		std::string rhs_name = (*i)->genIR(currentBlock);
+		std::string rhs_name = (*i)->genIR(currentBlock).value;
 		Tac* in = new Expression("+", lhs_name, rhs_name, name);
 		currentBlock->addTacInstructions(in);
-		return name;
+		return {name, currentBlock};
 	}
 };
 
@@ -141,15 +148,15 @@ private:
 public:
 	DivExpression(string t, string v, int l) : Node(t, v, l) {}
 	~DivExpression() {}
-	std::string genIR(BBlock *currentBlock) override {
+	IRResult genIR(BBlock *currentBlock) override {
 		std::string name = generateRandomString(); //generate a unique name
 		auto i = children.begin();
-		std::string lhs_name = (*i)->genIR(currentBlock);
+		std::string lhs_name = (*i)->genIR(currentBlock).value;
 		i++;
-		std::string rhs_name = (*i)->genIR(currentBlock);
+		std::string rhs_name = (*i)->genIR(currentBlock).value;
 		Tac* in = new Expression("/", lhs_name, rhs_name, name);
 		currentBlock->addTacInstructions(in);
-		return name;
+		return {name, currentBlock};
 	}
 };
 
@@ -158,15 +165,15 @@ private:
 public:
 	MulExpression(string t, string v, int l) : Node(t, v, l) {}
 	~MulExpression() {}
-	std::string genIR(BBlock *currentBlock) override {
+	IRResult genIR(BBlock *currentBlock) override {
 		std::string name = generateRandomString(); //generate a unique name
 		auto i = children.begin();
-		std::string lhs_name = (*i)->genIR(currentBlock);
+		std::string lhs_name = (*i)->genIR(currentBlock).value;
 		i++;
-		std::string rhs_name = (*i)->genIR(currentBlock);
+		std::string rhs_name = (*i)->genIR(currentBlock).value;
 		Tac* in = new Expression("*", lhs_name, rhs_name, name);
 		currentBlock->addTacInstructions(in);
-		return name;
+		return {name, currentBlock};
 	}
 };
 
@@ -175,15 +182,16 @@ private:
 public:
 	PowExpression(string t, string v, int l) : Node(t, v, l) {}
 	~PowExpression() {}
-	std::string genIR(BBlock *currentBlock) override {
+	IRResult genIR(BBlock *currentBlock) override {
 		std::string name = generateRandomString(); //generate a unique name
 		auto i = children.begin();
-		std::string lhs_name = (*i)->genIR(currentBlock);
+		std::string lhs_name = (*i)->genIR(currentBlock).value;
 		i++;
-		std::string rhs_name = (*i)->genIR(currentBlock);
+		std::string rhs_name = (*i)->genIR(currentBlock).value;
 		Tac* in = new Expression("^", lhs_name, rhs_name, name);
 		currentBlock->addTacInstructions(in);
-		return name;
+
+		return {name, currentBlock};
 	}
 };
 
@@ -192,8 +200,8 @@ private:
 public:
 	Identifier(string t, string v, int l) : Node(t, v, l) {}
 	~Identifier() {}
-	std::string genIR(BBlock *currentBlock) override {
-		return this->getValue(); // return the name of the identifier
+	IRResult genIR(BBlock *currentBlock) override {
+		return {this->getValue(), currentBlock}; // return the name of the identifier
 	}
 };
 
@@ -202,8 +210,8 @@ private:
 public:
 	Integer(string t, string v, int l) : Node(t, v, l) {}
 	~Integer() {}
-	std::string genIR(BBlock *currentBlock) override {
-		return this->getValue(); // return the value of the integer
+	IRResult genIR(BBlock *currentBlock) override {
+		return {this->getValue(), currentBlock}; // return the value of the integer
 	}
 };
 
@@ -212,8 +220,8 @@ private:
 public:
 	Float(string t, string v, int l) : Node(t, v, l) {}
 	~Float() {}
-	std::string genIR(BBlock *currentBlock) override {
-		return this->getValue(); // return the value of the float
+	IRResult genIR(BBlock *currentBlock) override {
+		return {this->getValue(), currentBlock}; // return the value of the float
 	}
 };
 
@@ -222,8 +230,8 @@ private:
 public:
 	Boolean(string t, string v, int l) : Node(t, v, l) {}
 	~Boolean() {}
-	std::string genIR(BBlock *currentBlock) override {
-		return this->getValue(); // return the value of the boolean
+	IRResult genIR(BBlock *currentBlock) override {
+		return {this->getValue(), currentBlock}; // return the value of the boolean
 	}
 };
 
@@ -232,12 +240,12 @@ private:
 public:
 	IfStmt(string t, string v, int l) : Node(t, v, l) {}
 	~IfStmt() {}
-	std::string genIR(BBlock *currentBlock) override {
+	IRResult genIR(BBlock *currentBlock) override {
 		std::string name = generateRandomString(); //generate a unique name
-		
-		// Code for IfStmt goes here
 
-		return name;
+		// code goes here
+		
+		return {"", currentBlock};
 	}
 };
 
@@ -246,12 +254,38 @@ private:
 public:
 	IfElseStmt(string t, string v, int l) : Node(t, v, l) {}
 	~IfElseStmt() {}
-	std::string genIR(BBlock *currentBlock) override {
+	IRResult genIR(BBlock *currentBlock) override {
 		std::string name = generateRandomString(); //generate a unique name
-		
-		// Code for IfElseStmt goes here
-		
-		return name;
+		std::string nameTrue = generateRandomString(); //generate a unique name
+		std::string nameFalse = generateRandomString(); //generate a unique name
+
+		// genIR for the boolean condition
+		auto i = children.begin();
+		(*i)->genIR(currentBlock);
+		i++;
+
+		// genIR true branch
+		BBlock* trueBlock = new BBlock();
+		trueBlock->setBBlockName(nameTrue);
+		(*i)->genIR(trueBlock);
+		i++;
+
+		// genIR false branch
+		BBlock* falseBlock = new BBlock();
+		falseBlock->setBBlockName(nameFalse);
+		(*i)->genIR(falseBlock);
+		i++;
+
+		// Joining block for true and false exit
+		BBlock* joiningBlock = new BBlock();
+		joiningBlock->setBBlockName(name);
+
+		trueBlock->setTrueExit(joiningBlock);
+		falseBlock->setTrueExit(joiningBlock);
+		currentBlock->setTrueExit(trueBlock);
+		currentBlock->setFalseExit(falseBlock);
+
+		return {"", joiningBlock};
 	}
 };
 

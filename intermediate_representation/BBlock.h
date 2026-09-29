@@ -50,7 +50,7 @@ public:
 
     std::string getTacStrings() {
         std::string label = " [label=\"";
-
+        label += name + " \n ";
         for (int i = 0; i < tacInstructions.size(); i++) {
             auto* x = tacInstructions[i];
             label += x->getTacString() + " \n ";

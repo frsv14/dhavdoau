@@ -1,20 +1,16 @@
-class Node {
-
-};
-
-main(): int {
-  volatile n : int
-  read(n)
-
-  for (volatile i : int := 2, i <= n, i := i + 1) {
-      for (volatile i : int := 2, i <= n, i := i + 1) {
-          for (volatile i : int := 2, i <= n, i := i + 1) {
-
-          }
-      }
-  }
-
-  volatile i : int := 2
-
-  return 0
+main(): int {  
+  volatile x : int := 5
+  if (3 < 5) {
+      volatile p : int := 5
+      q : int := 5 + p
+      return 1
+    } else {
+      volatile y : int := 4
+      volatile a : int := 0
+      volatile res : int := y + a
+      return 3
+    } 
+    d : float := ((1 + 2) - 3 * 2) / 5
+    abs : float := d - 2
+    return 0;
 }
