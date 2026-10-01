@@ -140,11 +140,16 @@ public:
             }
 
             for (auto child : node->children) {
-                if (child->type != "Params" && currentClass != nullptr) {
-                    createTable(child, currentClass);
+                if (child->type == "Params") {
+                    continue;
                 }
-                else if (child->type != "Params") {
-                    createTable(child);
+                if (child->type == "Block") {
+                    for (auto it : child->children) {
+                        createTable(it, currentClass);
+                    }
+                }
+                else {
+                    createTable(child, currentClass);
                 }
             }
             exitScope();
@@ -164,7 +169,7 @@ public:
 
             if (node->type == "VarDeclAssign") {
                 for (auto i = std::next(node->children.begin()); i != node->children.end(); i++) {
-                    createTable(*i);
+                    createTable(*i, currentClass);
                 }
             }
         }
@@ -173,7 +178,7 @@ public:
             enterScope();
 
             for (auto child : node->children) 
-                createTable(child);
+                createTable(child, currentClass);
             exitScope();
             return;
         }

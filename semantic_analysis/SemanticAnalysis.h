@@ -132,7 +132,7 @@ public:
                 traversal(st, child);
         }
 
-        if (currentNode->type == "Class" || currentNode->type == "Block" || currentNode->type == "Method" || currentNode->type == "Main") {
+        if (currentNode->type == "Class" || currentNode->type == "Block" || currentNode->type == "Method" || currentNode->type == "Main" || currentNode->type == "If" || currentNode->type == "IfElse") {
             st.exitScope();
         }
     }
@@ -168,7 +168,7 @@ public:
         else
             retType = currentNode->type;
 
-        if (retType == "Add" || retType == "Sub" || retType == "Mul" || retType == "Div" || retType == "Lt" || retType == "Gt" || retType == "Pow") {
+        if (retType == "Add" || retType == "Sub" || retType == "Mul" || retType == "Div" || retType == "Lt" || retType == "Gt" || retType == "Pow" || retType == "Eq") {
             std::string result = expressionEvaluate(currentNode, st);
             if (result == "Error")
                 return "Error";
@@ -205,7 +205,7 @@ public:
 
         if (currentNode->children.empty() && (type == "FloatLiteral" || type == "IntLiteral"))
             return currentNode->value;
-        else if (type != "Add" && type != "Sub" && type != "Mul" && type != "Div" && type != "Lt" && type != "Gt" && type != "Pow"){
+        else if (type != "Add" && type != "Sub" && type != "Mul" && type != "Div" && type != "Lt" && type != "Gt" && type != "Pow" && type != "Eq"){
             std::cerr << to_string(currentNode->lineno) << ": Type missmatch, got " << currentNode->type << std::endl;
             return "Error";
         }
@@ -239,6 +239,9 @@ public:
         if (currentNode->type == "Pow") {
             res = pow(std::stof(lhs), std::stof(rhs));
             return to_string(res);
+        }
+        if (currentNode->type == "Eq") {
+            return "1";
         }
         return to_string(res);
     }
