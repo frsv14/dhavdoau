@@ -35,23 +35,38 @@ public:
             }
         }
         
+        if (currentNode->type == "Method") {
+            int count = 0;
+            std::string type = st.lookup(currentNode->value)->getType();
+            AClass* currentClass = dynamic_cast<AClass*>(st.lookup(type));
+            auto params = currentNode->children.begin();
+            std::cout << "----- Method -----" << std::endl;
+            
+            for (auto child : (*params)->children) {
+                duplicateIdentifier(child, st);
+            }
+        }
+
         // TODO: HANDLE IF EXPRESSION LIST IS NOT EMPTY!!!
         if (currentNode->type == "MethodCall") {
             int count = 0;
             std::string type;
             std::cout << "----- MethodCall children -----" << std::endl;
-
             for (auto child : currentNode->children) {
                 if (count == 0) {
-                    type = st.lookup(child->value)->getType();
+                    if (child->type == "FuncCall") {
+                        type = child->value;
+                    }
+                    else {
+                        type = st.lookup(child->value)->getType();
+                    }
                     count++;
                 }
                 else if (count == 1) {
                     AClass* currentClass = dynamic_cast<AClass*>(st.lookup(type));
                     duplicateIdentifier(child, st);
-
                     if (currentClass->lookupMethod(child->value) == nullptr) 
-                        std::cout << "Undeclared identifier " << child->value << std::endl; 
+                        std::cerr << "Undeclared identifier " << child->value << std::endl; 
                     count++;
                 }
 
@@ -68,9 +83,9 @@ public:
                 type = evaluate(firstChild, st); // TODO: THIS CURRENTLY WONT WORK SINCE EVALUATE EXPECTES 2 CHILD NODES IF ITS A MATH EXPRESSION LIKE ADD OR SOMETHING
             
             if (st.lookup(currentMethod)->getType() == "IntType" && type != "IntLiteral")
-                    std::cout << "Type missmatch, Expecting " << st.lookup(currentMethod)->getType() << " but got " << type << std::endl;
+                    std::cerr << "Type missmatch, Expecting " << st.lookup(currentMethod)->getType() << " but got " << type << std::endl;
             else if (st.lookup(currentMethod)->getType() == "FloatType" && (type != "FloatLiteral" && type != "IntLiteral"))
-                std::cout << "Type missmatch, Expecting " << st.lookup(currentMethod)->getType() << " but got " << type << std::endl;
+                std::cerr << "Type missmatch, Expecting " << st.lookup(currentMethod)->getType() << " but got " << type << std::endl;
             std::cout << "------------------" << std::endl;
         }
 
@@ -78,7 +93,7 @@ public:
             std::cout << "----- If/IfElse children -----" << std::endl;
             std::string type = evaluate((*currentNode->children.begin()), st);
             if (type != "IntType" && type != "FloatType" && type != "IntLiteral" && type != "FloatLiteral")
-                std::cout << "Error: Did not get a type int or float at " << to_string(currentNode->lineno) << std::endl;
+                std::cerr << "Error: Did not get a type int or float at " << to_string(currentNode->lineno) << std::endl;
 
             std::cout << "------------------------------" << std::endl;
         }
@@ -104,11 +119,11 @@ public:
             std::string rhs = evaluate(*i, st);
 
             if (lhs == "IntType" && rhs != "IntLiteral")
-                std::cout << "Type missmatch, Expecting " << lhs << " but got " << rhs << std::endl;
+                std::cerr << "Type missmatch, Expecting " << lhs << " but got " << rhs << std::endl;
             else if (lhs == "FloatType" && (rhs != "FloatLiteral" && rhs != "IntLiteral"))
-                std::cout << "Type missmatch, Expecting " << lhs << " but got " << rhs << std::endl;
+                std::cerr << "Type missmatch, Expecting " << lhs << " but got " << rhs << std::endl;
             else if (lhs == "BoolType" && (rhs != "True" && rhs != "False"))
-                std::cout << "Type missmatch, Expecting " << lhs << " but got " << rhs << std::endl;
+                std::cerr << "Type missmatch, Expecting " << lhs << " but got " << rhs << std::endl;
             std::cout << "----------------------------------" << std::endl;
         }
 
@@ -127,7 +142,7 @@ public:
         AClass* currentClass = dynamic_cast<AClass*>(st.lookup(type));
 
         if (st.lookup(currentNode->value) == nullptr && currentClass->lookupMethod(currentNode->value) == nullptr) 
-            std::cout << "Undeclared identifier " << currentNode->value << std::endl; 
+            std::cerr << "Undeclared identifier " << currentNode->value << std::endl; 
     }
 
     void duplicateIdentifier(Node* currentNode, SymbolTable& st) {
@@ -139,7 +154,7 @@ public:
                 count++;
         }
         if (count > 1) 
-            std::cout << "Duplicated identifier " << currentNode->value << std::endl;
+            std::cerr << "Duplicated identifier " << currentNode->value << std::endl;
     }
 
     std::string evaluate(Node* currentNode, SymbolTable& st) {
@@ -184,14 +199,14 @@ public:
             else if (type == "IntType")
                 return "1";
             else
-                std::cout << "Type missmatch, got " << type << std::endl;
+                std::cerr << "Type missmatch, got " << type << std::endl;
                 return "Error";
         }
 
         if (currentNode->children.empty() && (type == "FloatLiteral" || type == "IntLiteral"))
             return currentNode->value;
         else if (type != "Add" && type != "Sub" && type != "Mul" && type != "Div" && type != "Lt" && type != "Gt" && type != "Pow"){
-            std::cout << to_string(currentNode->lineno) << ": Type missmatch, got " << currentNode->type << std::endl;
+            std::cerr << to_string(currentNode->lineno) << ": Type missmatch, got " << currentNode->type << std::endl;
             return "Error";
         }
 
