@@ -16,6 +16,10 @@
 #include "./intermediate_representation/BBlock.h"
 #include "./intermediate_representation/Tac.h"
 #include "./intermediate_representation/Expression.h"
+#include "./intermediate_representation/Assignment.h"
+#include "./intermediate_representation/Print.h"
+#include "./intermediate_representation/Read.h"
+#include "./intermediate_representation/Return.h"
 
 using namespace std;
 
@@ -37,6 +41,24 @@ public:
 	}   // Bison needs this.
 	std::string getValue() { return value; }
 	virtual IRResult genIR(BBlock *currentBlock) {
+		if (type == "Print") {
+			auto i = children.begin();
+			std::string value = (*i)->genIR(currentBlock).value;
+			currentBlock->addTacInstructions(new Print(value));
+			return {value, currentBlock};
+		}
+		if (type == "Read"){
+			auto i = children.begin();
+			std::string value = (*i)->genIR(currentBlock).value;
+			currentBlock->addTacInstructions(new Read(value));
+			return {"", currentBlock};
+		}
+		if (type == "Return") {
+			auto i = children.begin();
+			std::string value = (*i)->genIR(currentBlock).value;
+			currentBlock->addTacInstructions(new Return(value));
+			return {"", currentBlock};
+		}
 		for (auto i = children.begin(); i != children.end(); i++) {
 			IRResult result = (*i)->genIR(currentBlock);
 			currentBlock = result.block;
@@ -69,7 +91,7 @@ string generateRandomString()
             += CHARACTERS[distribution(generator)];
     }
 
-    return "Block_" + random_string;
+    return random_string;
 }
 	
 	void print_tree(int depth=0) {
@@ -105,6 +127,8 @@ string generateRandomString()
 	  }
   }
 };
+
+
 
 class SubExpression : public Node {
 private:
@@ -242,12 +266,33 @@ public:
 	~IfStmt() {}
 	IRResult genIR(BBlock *currentBlock) override {
 		std::string name = generateRandomString(); //generate a unique name
+		std::string nameTrue = generateRandomString(); //generate a unique name
+		std::string nameFalse = generateRandomString(); //generate a unique name
 
 		// code goes here
-		
+		auto i = children.begin();
+		(*i)->genIR(currentBlock);
+		i++;
+
+		// genIR true branch
+		BBlock* trueBlock = new BBlock();
+		trueBlock->setBBlockName(nameTrue);
+		(*i)->genIR(trueBlock);
+		i++;
+
+		// genIR false branch
+		BBlock* falseBlock = new BBlock();
+		falseBlock->setBBlockName(nameFalse);
+		(*i)->genIR(falseBlock);
+		i++;
+
+		currentBlock->setTrueExit(trueBlock);
+		currentBlock->setFalseExit(falseBlock);
+
 		return {"", currentBlock};
 	}
 };
+
 
 class IfElseStmt : public Node {
 private:

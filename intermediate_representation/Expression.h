@@ -2,6 +2,7 @@
 #define EXPRESSION_H
 
 #include "Tac.h"
+#include <string>
 #include <iostream>
 
 class Expression : public Tac {

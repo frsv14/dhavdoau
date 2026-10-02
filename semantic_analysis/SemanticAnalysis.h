@@ -13,7 +13,6 @@
 #include "../symbol_table/Scope.h"
 #include "../symbol_table/Class.h"
 #include "../symbol_table/Method.h"
-#include "../symbol_table/Scope.h"
 
 //TODO: FIX THE EVALUATE FUNCTION SO THAT IT TAKES ONE NODE AND EVALUATES ITS TYPE,
 //      FOR EXAMPLE, SEND A CHILD NODE, IF ITS ALREADY HAS ITS TYPE DEFINED THEN JUST SEND IT BACK, IF IT IS AN EXPRESSION LIKE +, -, *, / AND SO ON,
