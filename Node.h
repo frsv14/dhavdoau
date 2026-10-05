@@ -17,6 +17,7 @@
 #include "./intermediate_representation/Tac.h"
 #include "./intermediate_representation/Expression.h"
 
+
 using namespace std;
 
 struct IRResult {
@@ -69,7 +70,7 @@ string generateRandomString()
             += CHARACTERS[distribution(generator)];
     }
 
-    return "Block_" + random_string;
+    return random_string;
 }
 	
 	void print_tree(int depth=0) {
@@ -105,6 +106,8 @@ string generateRandomString()
 	  }
   }
 };
+
+
 
 class SubExpression : public Node {
 private:
@@ -242,12 +245,33 @@ public:
 	~IfStmt() {}
 	IRResult genIR(BBlock *currentBlock) override {
 		std::string name = generateRandomString(); //generate a unique name
+		std::string nameTrue = generateRandomString(); //generate a unique name
+		std::string nameFalse = generateRandomString(); //generate a unique name
 
 		// code goes here
-		
+		auto i = children.begin();
+		(*i)->genIR(currentBlock);
+		i++;
+
+		// genIR true branch
+		BBlock* trueBlock = new BBlock();
+		trueBlock->setBBlockName(nameTrue);
+		(*i)->genIR(trueBlock);
+		i++;
+
+		// genIR false branch
+		BBlock* falseBlock = new BBlock();
+		falseBlock->setBBlockName(nameFalse);
+		(*i)->genIR(falseBlock);
+		i++;
+
+		currentBlock->setTrueExit(trueBlock);
+		currentBlock->setFalseExit(falseBlock);
+
 		return {"", currentBlock};
 	}
 };
+
 
 class IfElseStmt : public Node {
 private:

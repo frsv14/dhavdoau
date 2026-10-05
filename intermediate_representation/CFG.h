@@ -4,6 +4,8 @@
 #include "../Node.h"
 #include "./BBlock.h"
 #include "./Jump.h"
+#include "./CondJump.h"
+
 
 class Cfg {
 private:
