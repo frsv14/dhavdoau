@@ -12,10 +12,13 @@
 
 #include <random>
 #include <string>
+#include <stdexcept>
 
 #include "./intermediate_representation/BBlock.h"
 #include "./intermediate_representation/Tac.h"
 #include "./intermediate_representation/Expression.h"
+#include "./intermediate_representation/CondJump.h"
+#include "./intermediate_representation/Jump.h"
 
 
 using namespace std;
@@ -52,7 +55,7 @@ string generateRandomString()
     // Define the list of possible characters
     const string CHARACTERS
         = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv"
-          "wxyz0123456789";
+          "wxyz";
 
     // Create a random number generator
     random_device rd;
@@ -73,6 +76,10 @@ string generateRandomString()
     return random_string;
 }
 	
+string generateString(IRResult result){
+	
+	return string();
+}
 	void print_tree(int depth=0) {
 		for(int i=0; i<depth; i++)
 		cout << "  ";
@@ -198,6 +205,35 @@ public:
 	}
 };
 
+class ComparisonExpression : public Node {
+public:
+	ComparisonExpression(string t, int l) : Node(t, "", l) {}
+
+	IRResult genIR(BBlock *currentBlock) override {
+		if (children.size() != 2) {
+			throw std::logic_error("Comparison expression must have two operands");
+		}
+
+		auto i = children.begin();
+		IRResult lhs = (*i)->genIR(currentBlock);
+		++i;
+		IRResult rhs = (*i)->genIR(lhs.block);
+
+		std::string op;
+		if (type == "Eq") op = "==";
+		else if (type == "Neq") op = "!=";
+		else if (type == "Lt") op = "<";
+		else if (type == "Gt") op = ">";
+		else if (type == "Lte") op = "<=";
+		else if (type == "Gte") op = ">=";
+		else throw std::logic_error("Unsupported comparison operator: " + type);
+
+		std::string result = generateRandomString();
+		rhs.block->addTacInstructions(new Expression(op, lhs.value, rhs.value, result));
+		return {result, rhs.block};
+	}
+};
+
 class Identifier : public Node {
 private:
 public:
@@ -244,34 +280,31 @@ public:
 	IfStmt(string t, string v, int l) : Node(t, v, l) {}
 	~IfStmt() {}
 	IRResult genIR(BBlock *currentBlock) override {
-		std::string name = generateRandomString(); //generate a unique name
-		std::string nameTrue = generateRandomString(); //generate a unique name
-		std::string nameFalse = generateRandomString(); //generate a unique name
-
-		// code goes here
 		auto i = children.begin();
-		(*i)->genIR(currentBlock);
+		IRResult condition = (*i)->genIR(currentBlock);
 		i++;
 
-		// genIR true branch
+		std::string trueName = generateRandomString();
+		std::string joinName = generateRandomString();
 		BBlock* trueBlock = new BBlock();
-		trueBlock->setBBlockName(nameTrue);
-		(*i)->genIR(trueBlock);
-		i++;
+		trueBlock->setBBlockName(trueName);
+		IRResult trueResult = (*i)->genIR(trueBlock);
 
-		// genIR false branch
-		BBlock* falseBlock = new BBlock();
-		falseBlock->setBBlockName(nameFalse);
-		(*i)->genIR(falseBlock);
-		i++;
+		BBlock* joiningBlock = new BBlock();
+		joiningBlock->setBBlockName(joinName);
 
-		currentBlock->setTrueExit(trueBlock);
-		currentBlock->setFalseExit(falseBlock);
+		condition.block->addTacInstructions(new CondJump("ifFalse", condition.value, joinName));
+		condition.block->addTacInstructions(new Jump(trueName));
 
-		return {"", currentBlock};
+		trueResult.block->addTacInstructions(new Jump(joinName));
+		trueResult.block->setTrueExit(joiningBlock);
+
+		condition.block->setTrueExit(trueBlock);
+		condition.block->setFalseExit(joiningBlock);
+
+		return {"", joiningBlock};
 	}
 };
-
 
 class IfElseStmt : public Node {
 private:
@@ -279,38 +312,39 @@ public:
 	IfElseStmt(string t, string v, int l) : Node(t, v, l) {}
 	~IfElseStmt() {}
 	IRResult genIR(BBlock *currentBlock) override {
-		std::string name = generateRandomString(); //generate a unique name
-		std::string nameTrue = generateRandomString(); //generate a unique name
-		std::string nameFalse = generateRandomString(); //generate a unique name
-
-		// genIR for the boolean condition
 		auto i = children.begin();
-		(*i)->genIR(currentBlock);
-		i++;
+		IRResult condition = (*i)->genIR(currentBlock);
+		++i;
 
-		// genIR true branch
+		std::string trueName = generateRandomString();
+		std::string falseName = generateRandomString();
+		std::string joinName = generateRandomString();
+
 		BBlock* trueBlock = new BBlock();
-		trueBlock->setBBlockName(nameTrue);
-		(*i)->genIR(trueBlock);
-		i++;
+		trueBlock->setBBlockName(trueName);
+		IRResult trueResult = (*i)->genIR(trueBlock);
+		++i;
 
-		// genIR false branch
 		BBlock* falseBlock = new BBlock();
-		falseBlock->setBBlockName(nameFalse);
-		(*i)->genIR(falseBlock);
-		i++;
+		falseBlock->setBBlockName(falseName);
+		IRResult falseResult = (*i)->genIR(falseBlock);
 
-		// Joining block for true and false exit
 		BBlock* joiningBlock = new BBlock();
-		joiningBlock->setBBlockName(name);
+		joiningBlock->setBBlockName(joinName);
 
-		trueBlock->setTrueExit(joiningBlock);
-		falseBlock->setTrueExit(joiningBlock);
-		currentBlock->setTrueExit(trueBlock);
-		currentBlock->setFalseExit(falseBlock);
+		condition.block->addTacInstructions(new CondJump("ifFalse", condition.value, falseName));
+		condition.block->addTacInstructions(new Jump(trueName));
+
+		trueResult.block->addTacInstructions(new Jump(joinName));
+		trueResult.block->setTrueExit(joiningBlock);
+		falseResult.block->addTacInstructions(new Jump(joinName));
+		falseResult.block->setTrueExit(joiningBlock);
+
+		condition.block->setTrueExit(trueBlock);
+		condition.block->setFalseExit(falseBlock);
 
 		return {"", joiningBlock};
 	}
-};
+};	
 
 #endif

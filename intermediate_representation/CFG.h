@@ -22,6 +22,22 @@ public:
             }
         }
 
+        if (node->type == "If") {
+            Node* nodeType = node->children.empty() ? nullptr : node->children.front();
+            
+            BBlock* bblockTrue = new BBlock();
+            std::string blockTrueName = "Block_" + std::to_string(currentBlockNum + 1);
+            bblockTrue->setBBlockName(blockTrueName);
+            currentBlockNum++;
+
+            CondJump* condJump = new CondJump("iffalse", nodeType->value, blockTrueName);
+            currentBlock->addTacInstructions(condJump);
+            currentBlock->setTrueExit(bblockTrue);
+
+            Jump* jumpToEnd = new Jump("Block_" + std::to_string(currentBlockNum));
+            bblockTrue->addTacInstructions(jumpToEnd);
+        }
+
         if (node->type == "IfElse") {
             Node* nodeType = node->children.empty() ? nullptr : node->children.front();
             
@@ -39,6 +55,10 @@ public:
             currentBlock->addTacInstructions(condJump);
             currentBlock->setTrueExit(bblockTrue);
             currentBlock->setFalseExit(bblockFalse);
+            
+            Jump* jumpToEnd = new Jump("Block_" + std::to_string(currentBlockNum));
+            bblockTrue->addTacInstructions(jumpToEnd);
+            bblockFalse->addTacInstructions(jumpToEnd);
         }
         
 

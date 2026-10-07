@@ -10,7 +10,8 @@ public:
     Tac(std::string _op, std::string _y,  std::string _x, std::string _z, std::string _result) : op{_op}, lhs{_y}, cond(_x), rhs{_z}, result{_result} {}
     Tac(std::string _op, std::string _y, std::string _z, std::string _result) : op{_op}, lhs{_y}, rhs{_z}, result{_result} {}
     Tac(std::string _op, std::string _x, std::string _label) : op{_op}, lhs{_x}, result{_label} {}
-    Tac(std::string _op, std::string _result) : op{"call"}, result{_result} {}
+    Tac(std::string _op, std::string _result) : op{_op}, result{_result} {}
+    
     virtual ~Tac() {}
     std::string getOp() {return this->op;}
     std::string getLhs() {return this->lhs;}
