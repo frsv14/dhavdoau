@@ -160,9 +160,9 @@ var
     : VOLATILE ID COLON type  opt_assignement // Volitile name : type := expr
         {
           if ($5 != nullptr)
-            $$ = new Node("VarDeclAssign", $2, yylineno);
+            $$ = new VariableDeclaration("VarDeclAssign", $2, yylineno);
           else
-            $$ = new Node("VarDecl", $2, yylineno);
+            $$ = new VariableDeclaration("VarDecl", $2, yylineno);
 
           $$->children.push_back($4);
 
@@ -172,9 +172,9 @@ var
     | ID COLON type opt_assignement // name : type := expr
         {
           if ($4 != nullptr)
-            $$ = new Node("VarDeclAssign", $1, yylineno);
+            $$ = new VariableDeclaration("VarDeclAssign", $1, yylineno);
           else
-            $$ = new Node("VarDecl", $1, yylineno);
+            $$ = new VariableDeclaration("VarDecl", $1, yylineno);
           $$->children.push_back($3);
           if ($4 != nullptr)
             $$->children.push_back($4);
@@ -218,13 +218,13 @@ stmt
     | var  stmtEnd  { $$ = $1; } // variable declaration (with optional assignment)
     | expr ASSIGNMENTOP expr stmtEnd // assignment statement
         {                            // name := expr;
-          $$ = new Node("Assign", "", yylineno);
+          $$ = new Assignment("Assign", "", yylineno);
           $$->children.push_back($1);
           $$->children.push_back($3);
         }
     | FOR LP for_header RP stmtBl // for loop
         {                         // for (init; condition; update) {}
-          $$ = new Node("For", "", yylineno);
+          $$ = new ForStatement("For", "", yylineno);
           $$->children.push_back($3);
           $$->children.push_back($5); 
         }
@@ -242,7 +242,7 @@ stmt
         }
     | PRINT LP expr RP stmtEnd // print statement, print(expr)
         {
-          $$ = new Node("Print", "", yylineno);
+          $$ = new Print("Print", "", yylineno);
           $$->children.push_back($3);
         }
     | READ LP expr RP stmtEnd // read statement, read(someVar)
@@ -252,13 +252,13 @@ stmt
         } 
     | RETURN expr stmtEnd // return statement, return expr
         {
-          $$ = new Node("Return", "", yylineno);
+          $$ = new Return("Return", "", yylineno);
           $$->children.push_back($2);
         }
     | BREAK stmtEnd  // break statement, break    
-        { $$ = new Node("Break", "", yylineno); }
+        { $$ = new BreakStatement("Break", "", yylineno); }
     | CONTINUE stmtEnd  // continue statement, continue 
-        { $$ = new Node("Continue", "", yylineno); }
+        { $$ = new ContinueStatement("Continue", "", yylineno); }
     | // empty statement, {}
       expr stmtEnd     
         { $$ = $1; }
@@ -271,14 +271,14 @@ for_header
         $$ = new Node("ForHeader", "", yylineno);
 
         Node* init = new Node("Init", "", yylineno);
-        init->children.push_back($1); 
+        init->children.push_back($1);
         init->children.push_back($3);
 
         Node* cond = new Node("Condition", "", yylineno);
-        cond->children.push_back($5); 
+        cond->children.push_back($5);
 
         Node* update = new Node("Update", "", yylineno);
-        update->children.push_back($7); 
+        update->children.push_back($7);
         update->children.push_back($9); 
 
         $$->children.push_back(init);
@@ -342,13 +342,13 @@ for_header
         $$ = new Node("ForHeader", "", yylineno);
 
         Node* init = new Node("Init", "", yylineno);
-        init->children.push_back($1); 
-        init->children.push_back($3);
+        init->children.push_back($1);
 
         Node* cond = new Node("Condition", "", yylineno);
-        cond->children.push_back($5); 
+        cond->children.push_back($3);
 
         Node* update = new Node("Update", "", yylineno);
+        update->children.push_back($5);
         update->children.push_back($7); 
 
         $$->children.push_back(init);
@@ -438,42 +438,42 @@ expr
 
     | expr EQUAL expr // equal
       {
-        Node* n = new Node("Eq", "", yylineno);
+        Node* n = new ComparisonExpression("Eq", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
     | expr NOTEQUAL expr // Not equal
       {
-        Node* n = new Node("Neq", "", yylineno);
+        Node* n = new ComparisonExpression("Neq", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
     | expr LT expr // less than
       {
-        Node* n = new Node("Lt", "", yylineno);
+        Node* n = new ComparisonExpression("Lt", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
     | expr GT expr // greater than
       {
-        Node* n = new Node("Gt", "", yylineno);
+        Node* n = new ComparisonExpression("Gt", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
     | expr LTE expr // less than or equal to
       {
-        Node* n = new Node("Lte", "", yylineno);
+        Node* n = new ComparisonExpression("Lte", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
     | expr GTE expr // greater than or equal to
       {
-        Node* n = new Node("Gte", "", yylineno);
+        Node* n = new ComparisonExpression("Gte", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
@@ -551,5 +551,3 @@ nonempty_expr_list
     ;
 
 %%
-
-
