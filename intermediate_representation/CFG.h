@@ -3,67 +3,125 @@
 
 #include "../Node.h"
 #include "./BBlock.h"
-#include "./Jump.h"
-#include "./CondJump.h"
-
+#include "./ParameterStmt.h"
+#include <cctype>
+#include <fstream>
+#include <stdexcept>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 class Cfg {
-private:
-    int currentBlockNum = 1;
 public:
-    void createCFG(Node* node, BBlock* currentBlock) {
-        if (!node) return;
+    struct Function {
+        std::string name;
+        BBlock* entry;
+    };
 
-        if (node->type == "VarDecl" || node->type == "VarDeclAssign") {
-            if (node->type == "VarDeclAssign") {
-                for (auto i = std::next(node->children.begin()); i != node->children.end(); i++) {
-                    createCFG(*i, currentBlock);
-                }
+    void generate(Node* ast) {
+        if (ast == nullptr) {
+            throw std::invalid_argument("Cannot generate IR from a null AST");
+        }
+        functions.clear();
+        collectFunctions(ast, "");
+        if (functions.empty()) {
+            throw std::logic_error("The AST contains no main function or methods");
+        }
+    }
+
+    const std::vector<Function>& getFunctions() const { return functions; }
+
+    void printAllTacInstructions() const {
+        for (const Function& function : functions) {
+            std::cout << "\nFunction " << function.name << ":\n";
+            std::unordered_set<const BBlock*> visited;
+            printBlock(function.entry, visited);
+        }
+    }
+
+    void generateDot(const std::string& filename = "CFG.dot") const {
+        std::ofstream outStream(filename);
+        if (!outStream) {
+            throw std::runtime_error("Could not open " + filename + " for writing");
+        }
+
+        outStream << "digraph CFG {\n";
+        for (std::size_t i = 0; i < functions.size(); ++i) {
+            const Function& function = functions[i];
+            outStream << "  subgraph cluster_" << i << " {\n"
+                      << "    label=\"" << BBlock::escapeDot(function.name) << "\";\n";
+            std::unordered_set<const BBlock*> visited;
+            function.entry->writeDot(outStream, visited);
+            outStream << "  }\n";
+        }
+        outStream << "}\n";
+        if (!outStream) {
+            throw std::runtime_error("Could not write " + filename);
+        }
+        std::cout << "Wrote control-flow graph to " << filename << '\n';
+    }
+
+private:
+    std::vector<Function> functions;
+
+    static std::string makeLabel(const std::string& name) {
+        std::string label;
+        for (unsigned char character : name) {
+            label += std::isalnum(character) || character == '_'
+                ? static_cast<char>(character) : '_';
+        }
+        return label.empty() ? "function" : label;
+    }
+
+    void collectFunctions(Node* node, const std::string& className) {
+        if (node->type == "Main") {
+            if (node->children.size() != 1) {
+                throw std::logic_error("Main node must contain one body");
+            }
+            addFunction("main", node->children.front(), nullptr);
+            return;
+        }
+
+        if (node->type == "Method") {
+            if (node->children.size() != 3) {
+                throw std::logic_error("Method node must contain parameters, return type, and body");
+            }
+            auto child = node->children.begin();
+            Node* parameters = *child++;
+            ++child;
+            Node* body = *child;
+            const std::string qualifiedName = className.empty()
+                ? node->value : className + "." + node->value;
+            addFunction(qualifiedName, body, parameters);
+            return;
+        }
+
+        const std::string nestedClassName =
+            node->type == "Class" ? node->value : className;
+        for (Node* child : node->children) {
+            collectFunctions(child, nestedClassName);
+        }
+    }
+
+    void addFunction(const std::string& name, Node* body, Node* parameters) {
+        BBlock* entry = new BBlock();
+        entry->setBBlockName(makeLabel(name) + "_entry");
+        if (parameters != nullptr) {
+            for (Node* parameter : parameters->children) {
+                entry->addTacInstructions(new ParameterStmt(parameter->value));
             }
         }
+        body->genIR(entry);
+        functions.push_back({name, entry});
+    }
 
-        if (node->type == "If") {
-            Node* nodeType = node->children.empty() ? nullptr : node->children.front();
-            
-            BBlock* bblockTrue = new BBlock();
-            std::string blockTrueName = "Block_" + std::to_string(currentBlockNum + 1);
-            bblockTrue->setBBlockName(blockTrueName);
-            currentBlockNum++;
-
-            CondJump* condJump = new CondJump("iffalse", nodeType->value, blockTrueName);
-            currentBlock->addTacInstructions(condJump);
-            currentBlock->setTrueExit(bblockTrue);
-
-            Jump* jumpToEnd = new Jump("Block_" + std::to_string(currentBlockNum));
-            bblockTrue->addTacInstructions(jumpToEnd);
-        }
-
-        if (node->type == "IfElse") {
-            Node* nodeType = node->children.empty() ? nullptr : node->children.front();
-            
-            BBlock* bblockTrue = new BBlock();
-            std::string blockTrueName = "Block_" + std::to_string(currentBlockNum + 1);
-            bblockTrue->setBBlockName(blockTrueName);
-            currentBlockNum++;
-
-            BBlock* bblockFalse = new BBlock();
-            std::string blockFalseName = "Block_" + std::to_string(currentBlockNum + 1);
-            bblockFalse->setBBlockName(blockFalseName);
-            currentBlockNum++;
-
-            CondJump* condJump = new CondJump("iffalse", nodeType->value, blockFalseName);
-            currentBlock->addTacInstructions(condJump);
-            currentBlock->setTrueExit(bblockTrue);
-            currentBlock->setFalseExit(bblockFalse);
-            
-            Jump* jumpToEnd = new Jump("Block_" + std::to_string(currentBlockNum));
-            bblockTrue->addTacInstructions(jumpToEnd);
-            bblockFalse->addTacInstructions(jumpToEnd);
-        }
-        
-
-        for (auto child : node->children) 
-            createCFG(child, currentBlock);
+    static void printBlock(const BBlock* block,
+                           std::unordered_set<const BBlock*>& visited) {
+        if (block == nullptr || !visited.insert(block).second) return;
+        std::cout << block->getName() << ":\n";
+        block->printAllTacInstructions();
+        printBlock(block->getTrueExit(), visited);
+        printBlock(block->getFalseExit(), visited);
     }
 };
 

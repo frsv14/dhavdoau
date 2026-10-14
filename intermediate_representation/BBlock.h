@@ -4,6 +4,9 @@
 #include "Tac.h"
 #include <vector>
 #include <fstream>
+#include <stdexcept>
+#include <string>
+#include <unordered_set>
 
 class BBlock {
 private:
@@ -15,48 +18,69 @@ private:
 public:
     BBlock() : trueExit(nullptr), falseExit(nullptr) {}
     void addTacInstructions(Tac* tacIns) {tacInstructions.push_back(tacIns);}
-    void printAllTacInstructions() {for (int i = 0; i < tacInstructions.size(); i++) tacInstructions[i]->dump();}
+    void printAllTacInstructions() const {
+        for (Tac* instruction : tacInstructions) instruction->dump();
+    }
     void setTrueExit(BBlock* dest) {this->trueExit = dest;}
     void setFalseExit(BBlock* dest) {this->falseExit = dest;}
     void setBBlockName(std::string name) {this->name = name;}
-    // Whenever a new block is made through a jump, "BBlock *trueExit, *falseExit;" needs to point to that new block
-    std::string getName() {return this->name;}
+    const std::string& getName() const {return this->name;}
+    BBlock* getTrueExit() const {return trueExit;}
+    BBlock* getFalseExit() const {return falseExit;}
+    const std::vector<Tac*>& getInstructions() const {return tacInstructions;}
     
-	void generate_tree() {
-		std::ofstream outStream;
-		char* filename = "CFG.dot";
-	  	outStream.open(filename);
-
-		outStream << "digraph {" << std::endl;
-		generate_tree_content(&outStream);
-		outStream << "}" << std::endl;
-		outStream.close();
-
-		printf("\nBuilt a tac-tree at %s. Use 'make tree' to generate the pdf version.\n", filename);
-  	}
-
-  	void generate_tree_content(std::ofstream *outStream) {
-	  *outStream << name << getTacStrings() << std::endl;
-
-      if (trueExit != nullptr) {
-        trueExit->generate_tree_content(outStream);
-        *outStream << name << " -> " << trueExit->getName() << std::endl;
-      }
-      if (falseExit != nullptr) {
-        falseExit->generate_tree_content(outStream);
-        *outStream << name << " -> " << falseExit->getName() << std::endl;
-      }
+    void generate_tree() const {
+        std::ofstream outStream("CFG.dot");
+        if (!outStream) {
+            throw std::runtime_error("Could not open CFG.dot for writing");
+        }
+        outStream << "digraph CFG {\n";
+        std::unordered_set<const BBlock*> visited;
+        writeDot(outStream, visited);
+        outStream << "}\n";
+        if (!outStream) {
+            throw std::runtime_error("Could not write CFG.dot");
+        }
     }
 
-    std::string getTacStrings() {
-        std::string label = " [label=\"";
-        label += name + " \n ";
-        for (int i = 0; i < tacInstructions.size(); i++) {
-            auto* x = tacInstructions[i];
-            label += x->getTacString() + " \n ";
-	    }
-        label += "\", shape=box];";
+    void writeDot(std::ostream& outStream,
+                  std::unordered_set<const BBlock*>& visited) const {
+        if (!visited.insert(this).second) return;
+        outStream << '"' << escapeDot(name) << "\" [shape=box, label=\""
+                  << escapeDot(getTacStrings()) << "\"];\n";
+        writeEdge(outStream, trueExit);
+        writeEdge(outStream, falseExit);
+        if (trueExit != nullptr) trueExit->writeDot(outStream, visited);
+        if (falseExit != nullptr) falseExit->writeDot(outStream, visited);
+    }
+
+    std::string getTacStrings() const {
+        std::string label = name;
+        for (Tac* instruction : tacInstructions) {
+            label += "\n" + instruction->getTacString();
+        }
         return label;
+    }
+
+    static std::string escapeDot(const std::string& value) {
+        std::string escaped;
+        for (char character : value) {
+            if (character == '\\' || character == '"') escaped += '\\';
+            if (character == '\n') {
+                escaped += "\\n";
+            } else if (character != '\r') {
+                escaped += character;
+            }
+        }
+        return escaped;
+    }
+
+private:
+    void writeEdge(std::ostream& outStream, const BBlock* destination) const {
+        if (destination != nullptr) {
+            outStream << '"' << escapeDot(name) << "\" -> \""
+                      << escapeDot(destination->getName()) << "\";\n";
+        }
     }
 };
 

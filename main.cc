@@ -7,12 +7,6 @@
 //#include "symbol_table/Method.h"
 //#include "symbol_table/Class.h"
 #include "semantic_analysis/SemanticAnalysis.h"
-#include "intermediate_representation/Tac.h"
-#include "intermediate_representation/Expression.h"
-#include "intermediate_representation/Jump.h"
-#include "intermediate_representation/MethodCall.h"
-#include "intermediate_representation/CondJump.h"
-#include "intermediate_representation/BBlock.h"
 #include "intermediate_representation/CFG.h"
 
 extern Node *root;
@@ -97,59 +91,16 @@ int main(int argc, char **argv)
                 st.resetTable();
                 semantic.traversal(st, root);
 
-                std::cout << "\n" << "----- INTERMEDIATE START -----" << "\n" << std::endl;
-                Expression* ex = new Expression("PLUS", "$1", "$2", "x");
-                CondJump* cj = new CondJump("iffalse", "X", "L1" );
-                Jump* jump = new Jump("L2");
-                MethodCall* mc = new MethodCall("f", "N", "x");
-
-                ex->dump();
-                cj->dump();
-                jump->dump();
-                mc->dump();
-
-                /*
-                std::cout << "\n" << "----- BBLOCK START -----" << "\n" << std::endl;
-                BBlock* bblock = new BBlock();
-                bblock->setBBlockName("BBlock_0");
-                bblock->addTacInstructions(ex);
-                bblock->addTacInstructions(cj);
-                bblock->addTacInstructions(jump);
-                bblock->addTacInstructions(mc);
-                bblock->printAllTacInstructions();
-
-                std::cout << "\n" << "----- BBLOCK1 START -----" << "\n" << std::endl;
-                BBlock* bblock1 = new BBlock();
-                bblock1->setBBlockName("BBlock_1");
-                bblock1->addTacInstructions(ex);
-                bblock1->printAllTacInstructions();
-
-                std::cout << "\n" << "----- BBLOCK2 START -----" << "\n" << std::endl;
-                BBlock* bblock2 = new BBlock();
-                bblock2->setBBlockName("BBlock_2");
-                bblock2->addTacInstructions(mc);
-                bblock2->addTacInstructions(cj);
-                bblock2->printAllTacInstructions();
-
-                bblock->setTrueExit(bblock1);
-                bblock->setFalseExit(bblock2);
-                */
-
-                
+                std::cout << "\n----- INTERMEDIATE REPRESENTATION -----\n";
                 Cfg cfg;
-                BBlock* bblock = new BBlock();
-                /*
-                bblock->setBBlockName("Block_0");
-                cfg.createCFG(root, bblock);
-                */
-                bblock->setBBlockName("Block_0");
-                root->genIR(bblock);
-                bblock->printAllTacInstructions();
-
-                bblock->generate_tree();
+                cfg.generate(root);
+                cfg.printAllTacInstructions();
+                cfg.generateDot();
             }
-            catch (...)
+            catch (const std::exception& error)
             {
+                std::cerr << "Could not generate intermediate representation: "
+                          << error.what() << '\n';
                 errCode = errCodes::AST_ERROR;
             }
         }

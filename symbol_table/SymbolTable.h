@@ -67,6 +67,14 @@ private:
 
         return scopeNode;
     }
+
+    static std::string typeName(Node* node) {
+        if (node->type == "TypeID") return node->value;
+        if (node->type == "ArrayType") {
+            return typeName(node->children.empty() ? nullptr : node->children.front()) + "[]";
+        }
+        return node->type;
+    }
     ///////////////////////////////
 public:
     SymbolTable() {
@@ -113,7 +121,7 @@ public:
                 auto it = node->children.begin();
                 it++;
                 if (it != node->children.end()) {
-                    returnType = (*it)->type;
+                    returnType = typeName(*it);
                 }
             }
 
@@ -132,7 +140,8 @@ public:
                     if (child->type != "Param") 
                         continue;
 
-                    std::string paramType = child->children.empty() ? "Empty param type" : child->children.front()->type;
+                    std::string paramType = child->children.empty()
+                        ? "Unknown" : typeName(child->children.front());
                     Variable* parameter = new Variable(child->value, paramType);
                     method->addParameter(parameter);
                     put(parameter->getId(), parameter);
@@ -143,14 +152,7 @@ public:
                 if (child->type == "Params") {
                     continue;
                 }
-                if (child->type == "Block") {
-                    for (auto it : child->children) {
-                        createTable(it, currentClass);
-                    }
-                }
-                else {
-                    createTable(child, currentClass);
-                }
+                createTable(child, currentClass);
             }
             exitScope();
             return;
@@ -159,13 +161,13 @@ public:
         if (node->type == "VarDecl" || node->type == "VarDeclAssign") {
             Node* nodeType = node->children.empty() ? nullptr : node->children.front();
             std::string varType;
-            if(nodeType != nullptr && (nodeType->type == "TypeID" || nodeType->type == "Identifier"))
-                varType = nodeType->value;
-            else if (nodeType != nullptr) 
-                varType = nodeType->type;
+            varType = typeName(nodeType);
 
             Variable* variable = new Variable(node->value, varType);
             put(node->value, variable);
+            if (currentClass != nullptr) {
+                currentClass->addVariable(node->value, variable);
+            }
 
             if (node->type == "VarDeclAssign") {
                 for (auto i = std::next(node->children.begin()); i != node->children.end(); i++) {

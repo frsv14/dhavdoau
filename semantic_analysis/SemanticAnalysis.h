@@ -27,7 +27,8 @@ public:
 
     void traversal(SymbolTable& st, Node* currentNode) {
         
-        if (currentNode->type == "Class" || currentNode->type == "Block" || currentNode->type == "Method" || currentNode->type == "Main") {
+        if (currentNode->type == "Class" || currentNode->type == "Block" ||
+            currentNode->type == "Method" || currentNode->type == "Main") {
             st.enterScope();
             if (currentNode->type == "Method" || currentNode->type == "Main") {
                 currentMethod = currentNode->value;
@@ -35,95 +36,104 @@ public:
         }
         
         if (currentNode->type == "Method") {
-            int count = 0;
-            std::string type = st.lookup(currentNode->value)->getType();
-            AClass* currentClass = dynamic_cast<AClass*>(st.lookup(type));
             auto params = currentNode->children.begin();
-            std::cout << "----- Method -----" << std::endl;
-            
-            for (auto child : (*params)->children) {
-                duplicateIdentifier(child, st);
+            if (params != currentNode->children.end()) {
+                for (auto child : (*params)->children) {
+                    duplicateIdentifier(child, st);
+                }
             }
         }
 
-        // TODO: HANDLE IF EXPRESSION LIST IS NOT EMPTY!!!
         if (currentNode->type == "MethodCall") {
-            int count = 0;
-            std::string type;
-            std::cout << "----- MethodCall children -----" << std::endl;
-            for (auto child : currentNode->children) {
-                if (count == 0) {
-                    if (child->type == "FuncCall") {
-                        type = child->value;
-                    }
-                    else {
-                        type = st.lookup(child->value)->getType();
-                    }
-                    count++;
-                }
-                else if (count == 1) {
-                    AClass* currentClass = dynamic_cast<AClass*>(st.lookup(type));
-                    duplicateIdentifier(child, st);
-                    if (currentClass->lookupMethod(child->value) == nullptr) 
-                        std::cerr << "Undeclared identifier " << child->value << std::endl; 
-                    count++;
-                }
+            if (currentNode->children.size() < 2 ||
+                currentNode->children.size() > 3) {
+                std::cerr << "Invalid method call at line "
+                          << currentNode->lineno << '\n';
+                return;
+            }
 
-            std::cout << "-------------------------------" << std::endl;
+            auto child = currentNode->children.begin();
+            Node* receiver = *child++;
+            Node* methodName = *child++;
+            Record* receiverRecord = nullptr;
+            if (receiver->type == "Identifier") {
+                receiverRecord = st.lookup(receiver->value);
+            } else if (receiver->type == "FuncCall") {
+                receiverRecord = st.lookup(receiver->value);
+            }
+            AClass* receiverClass = dynamic_cast<AClass*>(receiverRecord);
+            if (receiverClass == nullptr && receiverRecord != nullptr) {
+                receiverClass = dynamic_cast<AClass*>(st.lookup(receiverRecord->getType()));
+            }
+            if (receiverClass != nullptr &&
+                receiverClass->lookupMethod(methodName->value) == nullptr) {
+                std::cerr << "Undeclared method " << methodName->value
+                          << " at line " << currentNode->lineno << '\n';
+            }
+
+            receiver->type == "FuncCall"
+                ? traverseChildren(st, receiver)
+                : traversal(st, receiver);
+            if (child != currentNode->children.end()) {
+                traversal(st, *child);
+            }
+            return;
+        }
+
+        if (currentNode->type == "MemberAccess") {
+            if (!currentNode->children.empty()) {
+                traversal(st, currentNode->children.front());
             }
             return;
         }
 
         if (currentNode->type == "Return") {
-            std::cout << "----- Return -----" << std::endl;
-            Node* firstChild = (*currentNode->children.begin());
-            std::string type = firstChild->type;
-            if (type == "Add" || type == "Sub" || type == "Mul" || type == "Div" || type == "Lt" || type == "Gt")
-                type = evaluate(firstChild, st); // TODO: THIS CURRENTLY WONT WORK SINCE EVALUATE EXPECTES 2 CHILD NODES IF ITS A MATH EXPRESSION LIKE ADD OR SOMETHING
-            
-            if (st.lookup(currentMethod)->getType() == "IntType" && type != "IntLiteral")
-                    std::cerr << "Type missmatch, Expecting " << st.lookup(currentMethod)->getType() << " but got " << type << std::endl;
-            else if (st.lookup(currentMethod)->getType() == "FloatType" && (type != "FloatLiteral" && type != "IntLiteral"))
-                std::cerr << "Type missmatch, Expecting " << st.lookup(currentMethod)->getType() << " but got " << type << std::endl;
-            std::cout << "------------------" << std::endl;
+            if (!currentNode->children.empty()) {
+                Node* expression = currentNode->children.front();
+                Record* method = st.lookup(currentMethod);
+                if (method != nullptr) {
+                    std::string actualType = evaluate(expression, st);
+                    const std::string expectedType = method->getType();
+                    if (!typesCompatible(expectedType, actualType)) {
+                        std::cerr << "Type mismatch, expecting " << expectedType
+                                  << " but got " << actualType << '\n';
+                    }
+                }
+            }
         }
 
         if (currentNode->type == "If" || currentNode->type == "IfElse") {
-            std::cout << "----- If/IfElse children -----" << std::endl;
-            std::string type = evaluate((*currentNode->children.begin()), st);
-            if (type != "IntType" && type != "FloatType" && type != "IntLiteral" && type != "FloatLiteral")
-                std::cerr << "Error: Did not get a type int or float at " << to_string(currentNode->lineno) << std::endl;
-
-            std::cout << "------------------------------" << std::endl;
+            if (!currentNode->children.empty()) {
+                std::string type = evaluate(currentNode->children.front(), st);
+                if (type != "Error" && type != "BoolType" &&
+                    type != "True" && type != "False" &&
+                    type != "IntType" && type != "FloatType" &&
+                    type != "IntLiteral" && type != "FloatLiteral") {
+                    std::cerr << "Invalid if-condition type at line "
+                              << currentNode->lineno << ": " << type << '\n';
+                }
+            }
         }
         
         if (currentNode->type == "Identifier") {
-            std::cout << "----- Identifier -----" << std::endl;
             undeclaredIdentifier(st, currentNode);
-            duplicateIdentifier(currentNode, st);
-            std::cout << "----------------------------------" << std::endl;
         }
 
         if (currentNode->type == "VarDecl") {
-            std::cout << "----- VarDecl -----" << std::endl;
             duplicateIdentifier(currentNode, st);
-            std::cout << "----------------------------------" << std::endl;
         }
 
-        if (currentNode->type == "VarDeclAssign") {
-            std::cout << "----- VarDeclAssign children -----" << std::endl;
+        if (currentNode->type == "VarDeclAssign" &&
+            currentNode->children.size() == 2) {
             auto i = currentNode->children.begin();
             std::string lhs = evaluate(*i, st);
             i++;
             std::string rhs = evaluate(*i, st);
 
-            if (lhs == "IntType" && rhs != "IntLiteral")
-                std::cerr << "Type missmatch, Expecting " << lhs << " but got " << rhs << std::endl;
-            else if (lhs == "FloatType" && (rhs != "FloatLiteral" && rhs != "IntLiteral"))
-                std::cerr << "Type missmatch, Expecting " << lhs << " but got " << rhs << std::endl;
-            else if (lhs == "BoolType" && (rhs != "True" && rhs != "False"))
-                std::cerr << "Type missmatch, Expecting " << lhs << " but got " << rhs << std::endl;
-            std::cout << "----------------------------------" << std::endl;
+            if (rhs != "Error" && !typesCompatible(lhs, rhs)) {
+                std::cerr << "Type mismatch, expecting " << lhs
+                          << " but got " << rhs << '\n';
+            }
         }
 
         if (!currentNode->children.empty()) {
@@ -131,17 +141,37 @@ public:
                 traversal(st, child);
         }
 
-        if (currentNode->type == "Class" || currentNode->type == "Block" || currentNode->type == "Method" || currentNode->type == "Main" || currentNode->type == "If" || currentNode->type == "IfElse") {
+        if (currentNode->type == "Class" || currentNode->type == "Block" ||
+            currentNode->type == "Method" || currentNode->type == "Main") {
             st.exitScope();
         }
     }
 
     void undeclaredIdentifier(SymbolTable& st, Node* currentNode) {
-        std::string type = st.lookup(currentNode->value)->getType();
-        AClass* currentClass = dynamic_cast<AClass*>(st.lookup(type));
+        if (st.lookup(currentNode->value) == nullptr) {
+            std::cerr << "Undeclared identifier " << currentNode->value
+                      << " at line " << currentNode->lineno << '\n';
+        }
+    }
 
-        if (st.lookup(currentNode->value) == nullptr && currentClass->lookupMethod(currentNode->value) == nullptr) 
-            std::cerr << "Undeclared identifier " << currentNode->value << std::endl; 
+    void traverseChildren(SymbolTable& st, Node* currentNode) {
+        for (Node* child : currentNode->children) traversal(st, child);
+    }
+
+    static bool typesCompatible(const std::string& expected,
+                                const std::string& actual) {
+        if (expected == actual) return true;
+        if (expected == "IntType") return actual == "IntLiteral";
+        if (expected == "FloatType") {
+            return actual == "FloatLiteral" || actual == "IntLiteral" ||
+                   actual == "IntType";
+        }
+        if (expected == "BoolType") return actual == "True" || actual == "False";
+        if (expected.size() > 2 &&
+            expected.compare(expected.size() - 2, 2, "[]") == 0) {
+            return actual == expected;
+        }
+        return false;
     }
 
     void duplicateIdentifier(Node* currentNode, SymbolTable& st) {
@@ -157,28 +187,86 @@ public:
     }
 
     std::string evaluate(Node* currentNode, SymbolTable& st) {
-        std::string retType; 
-
-        if (currentNode->type == "Identifier") {
-            if (st.lookup(currentNode->value) == nullptr)
-                return "Error";
-            retType = st.lookup(currentNode->value)->getType();
+        if (currentNode == nullptr) return "Error";
+        const std::string& nodeType = currentNode->type;
+        if (nodeType == "IntLiteral" || nodeType == "FloatLiteral" ||
+            nodeType == "True" || nodeType == "False") return nodeType;
+        if (nodeType == "IntType" || nodeType == "FloatType" ||
+            nodeType == "BoolType" || nodeType == "VoidType") return nodeType;
+        if (nodeType == "TypeID") return currentNode->value;
+        if (nodeType == "ArrayType") {
+            if (currentNode->children.empty()) return "Unknown[]";
+            return evaluate(currentNode->children.front(), st) + "[]";
         }
-        else
-            retType = currentNode->type;
-
-        if (retType == "Add" || retType == "Sub" || retType == "Mul" || retType == "Div" || retType == "Lt" || retType == "Gt" || retType == "Pow" || retType == "Eq") {
-            std::string result = expressionEvaluate(currentNode, st);
-            if (result == "Error")
-                return "Error";
-
-            float value = stof(result);
-            if (value == floor(value))
-                retType = "IntLiteral";
-            else
-                retType = "FloatLiteral";
+        if (nodeType == "Identifier") {
+            Record* record = st.lookup(currentNode->value);
+            return record == nullptr ? "Error" : record->getType();
         }
-        return retType;
+        if (nodeType == "MemberAccess") {
+            if (currentNode->children.size() != 2) return "Error";
+            auto child = currentNode->children.begin();
+            const std::string receiverType = evaluate(*child, st);
+            Node* member = *++child;
+            if (member->value == "length") return "IntType";
+            AClass* receiverClass = dynamic_cast<AClass*>(st.lookup(receiverType));
+            if (receiverClass != nullptr) {
+                Variable* field = receiverClass->lookupVariable(member->value);
+                if (field != nullptr) return field->getType();
+            }
+            return "Error";
+        }
+        if (nodeType == "ArrayAccess") {
+            if (currentNode->children.size() != 2) return "Error";
+            std::string arrayType = evaluate(currentNode->children.front(), st);
+            if (arrayType.size() > 2 &&
+                arrayType.compare(arrayType.size() - 2, 2, "[]") == 0) {
+                arrayType.resize(arrayType.size() - 2);
+                return arrayType;
+            }
+            return "Error";
+        }
+        if (nodeType == "Length") return "IntType";
+        if (nodeType == "Eq" || nodeType == "Neq" || nodeType == "Lt" ||
+            nodeType == "Gt" || nodeType == "Lte" || nodeType == "Gte" ||
+            nodeType == "And" || nodeType == "Or" || nodeType == "Not") {
+            return "BoolType";
+        }
+        if (nodeType == "FuncCall") {
+            Record* callee = st.lookup(currentNode->value);
+            if (callee == nullptr) return "Error";
+            return dynamic_cast<AClass*>(callee) == nullptr
+                ? callee->getType() : currentNode->value;
+        }
+        if (nodeType == "MethodCall") {
+            if (currentNode->children.size() < 2) return "Error";
+            auto child = currentNode->children.begin();
+            const std::string receiverType = evaluate(*child++, st);
+            Node* methodName = *child;
+            AClass* receiverClass = dynamic_cast<AClass*>(st.lookup(receiverType));
+            if (receiverClass == nullptr) return "Error";
+            Method* method = receiverClass->lookupMethod(methodName->value);
+            return method == nullptr ? "Error" : method->getType();
+        }
+        if (nodeType == "ArrayLiteral") {
+            if (currentNode->children.empty()) return "Error";
+            return evaluate(currentNode->children.front(), st) + "[]";
+        }
+        if (nodeType == "EmptyArrayLiteral") return "Unknown[]";
+        if (nodeType == "Add" || nodeType == "Sub" || nodeType == "Mul" ||
+            nodeType == "Div" || nodeType == "Pow") {
+            if (currentNode->children.size() != 2) return "Error";
+            auto child = currentNode->children.begin();
+            const std::string lhs = evaluate(*child++, st);
+            const std::string rhs = evaluate(*child, st);
+            if ((lhs == "IntType" || lhs == "IntLiteral") &&
+                (rhs == "IntType" || rhs == "IntLiteral")) return "IntType";
+            if ((lhs == "IntType" || lhs == "IntLiteral" ||
+                 lhs == "FloatType" || lhs == "FloatLiteral") &&
+                (rhs == "IntType" || rhs == "IntLiteral" ||
+                 rhs == "FloatType" || rhs == "FloatLiteral")) return "FloatType";
+            return "Error";
+        }
+        return nodeType;
     }
 
     std::string expressionEvaluate(Node* currentNode, SymbolTable& st) {
