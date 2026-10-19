@@ -1,4 +1,5 @@
 #include <iostream>
+#include <system_error>
 #include "parser.tab.hh"
 
 #include "symbol_table/SymbolTable.h"
@@ -6,7 +7,6 @@
 //#include "symbol_table/Variable.h"
 //#include "symbol_table/Method.h"
 //#include "symbol_table/Class.h"
-#include "semantic_analysis/SemanticAnalysis.h"
 #include "intermediate_representation/CFG.h"
 #include "ByteCode_Gen/ByteCodeGen.h"
 #include "Interpreter/Interpreter.h"
@@ -73,26 +73,43 @@ int main(int argc, char **argv)
             {
                 root->print_tree();
                 root->generate_tree();
+            }
+            catch (const std::exception& error)
+            {
+                std::cerr << "Could not generate intermediate representation: "
+                          << error.what() << '\n';
+                errCode = errCodes::AST_ERROR;
+            }
+        }
 
-                //test
-                std::cout << "\n" << "----- SYMBOLTABLE START -----" << "\n" << std::endl;
-                SymbolTable st;
-                st.createTable(root);
-                /*
-                st.put("test1", new Variable("test", "string"));
-                st.put("test2", new Variable("num", "int"));
-                st.put("testMethod", new Method("testMethod", "void"));
-                st.put("testClass", new AClass("TestClass", "TestClass"));
-                */
-                st.exportToDot();
-                st.printTable();
-                //test end
+        std::cout << "\n" << "----- SYMBOLTABLE START -----" << "\n" << std::endl;
+        SymbolTable st;
+        root->createTable(st);
+        /*
+        st.put("test1", new Variable("test", "string"));
+        st.put("test2", new Variable("num", "int"));
+        st.put("testMethod", new Method("testMethod", "void"));
+        st.put("testClass", new AClass("TestClass", "TestClass"));
+        */
+        st.exportToDot();
+        st.printTable();
+        //test end
 
-                std::cout << "\n" << "----- SEMANTIC START -----" << "\n" << std::endl;
-                SemanticAnalysis semantic;
-                st.resetTable();
-                semantic.traversal(st, root);
+        std::cout << "\n" << "----- SEMANTIC START -----" << "\n" << std::endl;
+        st.resetTable();
+        root->semanticAnalysis(st);
 
+        if (errCode == 4) {
+            std::cout << "error" << std::endl;
+            return 0;
+        }
+        
+        else {
+            printf("\nThe compiler successfuly generated a syntax tree for the given input! \n");
+
+            printf("\nPrint Tree:  \n");
+            try
+            {
                 std::cout << "\n----- INTERMEDIATE REPRESENTATION -----\n";
                 Cfg cfg;
                 cfg.generate(root);
