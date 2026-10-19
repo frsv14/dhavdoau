@@ -9,6 +9,7 @@
 #include "semantic_analysis/SemanticAnalysis.h"
 #include "intermediate_representation/CFG.h"
 #include "ByteCode_Gen/ByteCodeGen.h"
+#include "Interpreter/Interpreter.h"
 
 extern Node *root;
 extern FILE *yyin;
@@ -101,6 +102,13 @@ int main(int argc, char **argv)
                 std::cout << "\n----- BYTECODE GENERATION -----\n";
                 ByteCodeGen byteCodeGen;
                 byteCodeGen.generate(cfg, "ByteCode.txt");
+
+                std::cout << "\n----- COMPILATION SUCCESSFUL -----\n";
+                std::cout << "Bytecode generated in ByteCode.txt" << std::endl;
+                std::cout << "Running interpreter..." << std::endl;
+
+                Interpreter interpreter;
+                interpreter.interpret("ByteCode.txt");
 
 
             }

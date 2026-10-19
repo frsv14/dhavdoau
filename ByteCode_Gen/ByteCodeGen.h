@@ -12,7 +12,7 @@
 class ByteCodeGen : public Node {
     private:
 
-static bool isNumber(const std::string& value) {
+    static bool isNumber(const std::string& value) {
         //dena delen är ai för jag viste inte hur jag skulle göra
         char* end = nullptr;
         std::strtod(value.c_str(), &end);
