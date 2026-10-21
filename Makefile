@@ -9,7 +9,7 @@ lex.yy.c: lexer.flex parser.tab.cc
 tree: 
 		 dot -Tpdf tree.dot -otree.pdf
 clean:
-		rm -f parser.tab.* lex.yy.c* compiler stack.hh position.hh location.hh tree.dot tree.pdf parser.output symbol_table.dot symboltable.pdf cfg.pdf
+		rm -f parser.tab.* lex.yy.c* compiler stack.hh position.hh location.hh tree.dot tree.pdf parser.output symbol_table.dot symboltable.pdf cfg.pdf CFG.dot ByteCode.txt
 		rm -Rf compiler.dSYM
 symboltable: 
 		 dot -Tpdf symbol_table.dot -osymboltable.pdf

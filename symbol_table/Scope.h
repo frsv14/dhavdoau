@@ -65,11 +65,8 @@ public:
         }
     }
 
-    /////////////////////////////////////////////////
-    const std::multimap<std::string, Record*>& getRecords() const { return records; }
-    const std::vector<Scope*>& getChildrenScopes() const { return childrenScopes; }
-    ////////////////////////////////////////////////
-
+    std::multimap<std::string, Record*>& getRecords() { return records; }
+    std::vector<Scope*>& getChildrenScopes() { return childrenScopes; }
     Scope* getParentScope() const {return this->parentScope;}
     void setRecords(std::string key, Record* item) {records.insert({key, item});}
 };

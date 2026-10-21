@@ -2,7 +2,6 @@
 #define SYMBOLTABLE_H
 
 #include "Scope.h"
-#include "../Node.h"
 #include <string>
 
 #include "Record.h"
@@ -67,14 +66,6 @@ private:
 
         return scopeNode;
     }
-
-    static std::string typeName(Node* node) {
-        if (node->type == "TypeID") return node->value;
-        if (node->type == "ArrayType") {
-            return typeName(node->children.empty() ? nullptr : node->children.front()) + "[]";
-        }
-        return node->type;
-    }
     ///////////////////////////////
 public:
     SymbolTable() {
@@ -90,104 +81,6 @@ public:
     Record* lookup(std::string key) {return current->lookup(key);}
     void printTable() {root->printTable();}
     void resetTable() {root->resetScope();}
-
-    void createTable(Node* node, AClass* currentClass = nullptr) {
-        if (!node) return;
-
-        if (node->type == "Program") {
-            // Program
-            for (auto child : node->children) 
-                createTable(child);
-            return;
-        }
-
-        if (node->type == "Class") {
-            // Class
-            AClass* aClass = new AClass(node->value, node->type);
-            put(node->value, aClass);
-
-            enterScope();
-            for (auto child : node->children) 
-                createTable(child, aClass);
-            exitScope();
-            return;
-        }
-
-        if (node->type == "Method" || node->type == "Main") {
-            std::string methodName = node->value;
-            std::string returnType = (node->type == "Main") ? "IntType" : "";
-
-            if (node->type != "Main" && node->children.size() > 1) {
-                auto it = node->children.begin();
-                it++;
-                if (it != node->children.end()) {
-                    returnType = typeName(*it);
-                }
-            }
-
-            Method* method = new Method(methodName, returnType);
-            put(method->getId(), method);
-            
-            if (currentClass != nullptr) {
-                currentClass->addMethod(method->getId(), method);
-            }
-
-            enterScope();
-
-            if (!node->children.empty()) {
-                Node* paramsNode = node->children.front();
-                for (auto child : paramsNode->children) {
-                    if (child->type != "Param") 
-                        continue;
-
-                    std::string paramType = child->children.empty()
-                        ? "Unknown" : typeName(child->children.front());
-                    Variable* parameter = new Variable(child->value, paramType);
-                    method->addParameter(parameter);
-                    put(parameter->getId(), parameter);
-                }
-            }
-
-            for (auto child : node->children) {
-                if (child->type == "Params") {
-                    continue;
-                }
-                createTable(child, currentClass);
-            }
-            exitScope();
-            return;
-        }
-
-        if (node->type == "VarDecl" || node->type == "VarDeclAssign") {
-            Node* nodeType = node->children.empty() ? nullptr : node->children.front();
-            std::string varType;
-            varType = typeName(nodeType);
-
-            Variable* variable = new Variable(node->value, varType);
-            put(node->value, variable);
-            if (currentClass != nullptr) {
-                currentClass->addVariable(node->value, variable);
-            }
-
-            if (node->type == "VarDeclAssign") {
-                for (auto i = std::next(node->children.begin()); i != node->children.end(); i++) {
-                    createTable(*i, currentClass);
-                }
-            }
-        }
-
-        if (node->type == "Block") {
-            enterScope();
-
-            for (auto child : node->children) 
-                createTable(child, currentClass);
-            exitScope();
-            return;
-        }
-
-        for (auto child : node->children) 
-            createTable(child, currentClass);
-    }
 
     //////////////////////////////
     void exportToDot(const std::string& filename = "symbol_table.dot") {

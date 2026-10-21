@@ -46,13 +46,13 @@
 %left AND
 %left EQUAL NOTEQUAL LT GT  
 %left LTE GTE
-%left LSB RSB
 %right DOT 
 %right LCB RCB 
 %nonassoc LENGTH 
 %left PLUSOP MINUSOP
 %left MULTOP DIVOP
 %right POWEROP
+%left LSB RSB
 %left ID ELSE 
 %left LP RP 
 %right NOTOP
@@ -91,7 +91,7 @@ program
 class
     : CLASS ID LCB class_body RCB 
         {
-          $$ = new Node("Class", $2, yylineno);
+          $$ = new AClassNode("Class", $2, yylineno);
           $$->children.push_back($4);
         }
     ;
@@ -118,7 +118,7 @@ entry
 method
     : ID LP param_list RP COLON type stmtBl 
         {
-          $$ = new Node("Method", $1, yylineno);
+          $$ = new MethodNode("Method", $1, yylineno);
           $$->children.push_back($3);
           $$->children.push_back($6);
           $$->children.push_back($7);
@@ -247,7 +247,7 @@ stmt
         }
     | READ LP expr RP stmtEnd // read statement, read(someVar)
         {
-          $$ = new Node("Read", "", yylineno);
+          $$ = new Read("Read", "", yylineno);
           $$->children.push_back($3);
         } 
     | RETURN expr stmtEnd // return statement, return expr
@@ -382,14 +382,14 @@ expr
         }
     | expr AND expr // logical and
       {
-        Node* n = new Node("And", "", yylineno);
+        Node* n = new ComparisonExpression("And", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
       }
     | expr OR expr // logical or
       {
-        Node* n = new Node("Or", "", yylineno);
+        Node* n = new ComparisonExpression("Or", yylineno);
         n->children.push_back($1);
         n->children.push_back($3);
         $$ = n;
@@ -480,7 +480,7 @@ expr
       }
     | NOTOP expr // logical not
       {
-        Node* n = new Node("Not", "", yylineno);
+        Node* n = new ComparisonExpression("Not", yylineno);
         n->children.push_back($2);
         $$ = n;
       }
@@ -493,7 +493,7 @@ expr
           }
     | expr LSB expr RSB // array[index]
         {
-          Node* n = new Node("ArrayAccess", "", yylineno);
+          Node* n = new ArrayAccess("ArrayAccess", "", yylineno);
           n->children.push_back($1);
           n->children.push_back($3); 
           $$ = n;
@@ -523,7 +523,7 @@ expr
         { $$ = $2; }
     | expr DOT ID LP expr_list RP // method.call(expr_list)
         {
-          Node* n = new Node("MethodCall", "", yylineno);
+          Node* n = new MethodCallNode("MethodCall", "", yylineno);
           n->children.push_back($1);
           n->children.push_back(new Node("Identifier", $3, yylineno));
           if ($5 != nullptr)

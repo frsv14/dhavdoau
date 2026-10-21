@@ -56,7 +56,7 @@
 
 0|[1-9][0-9]*           {if(USE_LEX_ONLY) {printf("INT ");} else {return yy::parser::make_INT(yytext);}}
 [0-9]+"."[0-9]+         {if (USE_LEX_ONLY) {printf("FLOAT ");} else {return yy::parser::make_FLOAT(yytext);}}
-[a-z]|[A-Z]|[a-z][0-9A-Za-z]*|[A-Z][0-9A-Za-z]*   {if(USE_LEX_ONLY) {printf("ID ");} else {return yy::parser::make_ID(yytext);}}
+[a-z]|[A-Z]|[a-z][0-9A-Za-z_]*|[A-Z][0-9A-Za-z_]*   {if(USE_LEX_ONLY) {printf("ID ");} else {return yy::parser::make_ID(yytext);}}
 
 [ \t\r]+ {}
 
