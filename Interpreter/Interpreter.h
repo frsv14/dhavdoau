@@ -10,20 +10,85 @@
 
 class Interpreter {
 private: 
-    struct heapNode {
-        std::string name = "";
-        int Ivalue;
+    enum class ValueType {
+        INT,
+        FLOAT
     };
 
-    std::list<int> stack;
+    struct Value {
+        Value() {NULL;};
+
+        ValueType type;
+
+        union {
+            int i;
+            float f;
+            bool isFloat;
+        };
+
+        Value(int value) : type(ValueType::INT), i(value) {}
+        Value(float value) : type(ValueType::FLOAT), f(value) {}
+
+        Value operator-(const Value& other) const {
+            if (type == ValueType::FLOAT ||
+                other.type == ValueType::FLOAT) {
+                float a = (type == ValueType::FLOAT) ? f : i;
+                float b = (other.type == ValueType::FLOAT) ? other.f : other.i;
+                return Value(a - b);
+            }
+
+            return Value(i - other.i);
+        }
+
+        Value operator+(const Value& other) const {
+            if (type == ValueType::FLOAT ||
+                other.type == ValueType::FLOAT) {
+                float a = (type == ValueType::FLOAT) ? f : i;
+                float b = (other.type == ValueType::FLOAT) ? other.f : other.i;
+                return Value(a + b);
+            }
+
+            return Value(i + other.i);
+        }
+
+        Value operator*(const Value& other) const {
+            if (type == ValueType::FLOAT ||
+                other.type == ValueType::FLOAT) {
+                float a = (type == ValueType::FLOAT) ? f : i;
+                float b = (other.type == ValueType::FLOAT) ? other.f : other.i;
+                return Value(a * b);
+            }
+
+            return Value(i * other.i);
+        }
+
+        Value operator/(const Value& other) const {
+            if (type == ValueType::FLOAT ||
+                other.type == ValueType::FLOAT) {
+                float a = (type == ValueType::FLOAT) ? f : i;
+                float b = (other.type == ValueType::FLOAT) ? other.f : other.i;
+                return Value(a / b);
+            }
+
+            return Value(i / other.i);
+        }
+
+    };
+
+    struct heapNode {
+        std::string name = "";
+        Value IFvalue;
+    };
+
+    std::list<Value> stack;
     std::list<heapNode*> heap;
 
     void push_int (int value){
-        stack.push_front(value);
+        stack.push_front(Value(value));
     }
 
-    void push_float (int value){
-        stack.push_front(value);
+    void push_float (float value){
+        stack.push_front(Value(value));
     }
 
     void store (std::string name){
@@ -34,56 +99,65 @@ private:
     void load (std::string name){
         for (heapNode* node : heap) {
             if (node->name == name) {
-                stack.push_front(node->Ivalue);
+                stack.push_front(node->IFvalue);
                 return;
             }
         }
     }
     
     void mul (){
-        int a = stack.front();
+        Value a = stack.front();
         stack.pop_front();
-        int b = stack.front();
+        Value b = stack.front();
         stack.pop_front();
         stack.push_front(b*a);
     }
 
     void powto () {
-        int a = stack.front();
+        Value exponent = stack.front();
         stack.pop_front();
-        int b = stack.front();
+
+        Value base = stack.front();
         stack.pop_front();
-        int result = pow(b, a);
-        stack.push_front(result);
+
+        float a = (exponent.type == ValueType::FLOAT) ? exponent.f : exponent.i;
+
+        float b = (base.type == ValueType::FLOAT) ? base.f : base.i;
+
+        stack.push_front(Value(std::pow(b, a)));
     }
 
     void add (){
-        int a = stack.front();
+        Value a = stack.front();
         stack.pop_front();
-        int b = stack.front();
+        Value b = stack.front();
         stack.pop_front();
         stack.push_front(b + a);
     }
 
     void sub (){
-        int a = stack.front();
+        Value a = stack.front();
         stack.pop_front();
-        int b = stack.front();
+        Value b = stack.front();
         stack.pop_front();
-        stack.push_front(b-a);
+        stack.push_front(b - a);
     }
         
     void div (){
-        int a = stack.front();
+        Value a = stack.front();
         stack.pop_front();
-        int b = stack.front();
+        Value b = stack.front();
         stack.pop_front();
-        stack.push_front(b/a);
+        stack.push_front(b / a);
     }
     
     void print (){
-        int a = stack.front();
-        std::cout << a << std::endl;
+        Value a = stack.front();
+        if (a.type == ValueType::FLOAT) {
+            std::cout << a.f << std::endl;
+        } else {
+            std::cout << a.i << std::endl;
+        }
     }
 
 public:
@@ -105,7 +179,7 @@ public:
                 iss >> value;
                 push_int(value);
             } else if (instruction == "PUSH_FLOAT") {
-                int value;
+                float value;
                 iss >> value;
                 push_float(value);
             }
