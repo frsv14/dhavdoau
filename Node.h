@@ -56,7 +56,7 @@ public:
 	}   // Bison needs this.
 	std::string getValue() { return value; }
 
-	void createTable(SymbolTable& st, AClass* currentClass = nullptr) {
+	virtual void createTable(SymbolTable& st, AClass* currentClass = nullptr) {
         if (type == "Program") {
             // Program
             for (auto child : children) 
@@ -64,8 +64,10 @@ public:
             return;
         }
 
-        if (type == "Class") {
+		if (type == "Class") {
             // Class
+			std::cout << "Type: " << type << std::endl;
+			std::cout << "value: " << value << std::endl;
             AClass* aClass = new AClass(value, type);
             st.put(value, aClass);
 
@@ -216,7 +218,7 @@ public:
 		if (type == "FuncCall") {
 			Record* record = st.lookup(value);
 
-			if (record == nullptr || record->getKind() != "Class") {
+			if (record == nullptr || (record->getKind() != "Method" && record->getKind() != "Class")) {
 				std::cerr << "@error at line " << lineno << " - semantic (undefined class: " << value << ")" << std::endl;
 				errCode = 4;
 				return "error";
@@ -228,7 +230,7 @@ public:
 				}
 			}
 
-			return record->getId();
+			return record->getType();
 		}
 
 		if (type == "MemberAccess") {
@@ -245,7 +247,7 @@ public:
 
 			if (memberType == "error") return "error";
 
-			if (memberType.substr(memberType.size() - 2) == "[]" && memberName == "length") return memberType.erase(memberType.size() - 2); //Returns type - [] ex. IntType instead of IntType[]
+			if (memberType.substr(memberType.size() - 2) == "[]" && memberName == "length") return "IntLiteral"; //Returns type - [] ex. IntType instead of IntType[]
 			else {
 				std::cerr << "@error at line " << lineno << " - semantic (member ." << memberName << " used on non-array)" << std::endl;
 				errCode = 4;
@@ -363,12 +365,14 @@ public:
 			std::cerr << "@error at line " << lineno << " - semantic (type mismatch: got " << rhsType << ", expected " << lhsType << ")" << std::endl;
 			errCode = 4;
 			return "error";
-		} 
+		}
+		/*
 		else if (lhsType != rhsType) {
 			std::cerr << "@error at line " << lineno << " - semantic (type mismatch: got " << rhsType << ", expected " << lhsType << ")" << std::endl;
 			errCode = 4;
 			return "error";
 		} 
+		*/
 		return lhsType;
 	}
 
@@ -1126,26 +1130,33 @@ public:
 	~MethodCallNode() {}
 	std::string semanticAnalysis(SymbolTable& st) override {
 		auto i = children.begin();
-		std::string recieveType = (*i)->semanticAnalysis(st);
+		
+		Node* first = *i;
 		i++;
-		std::string methodName = (*i)->value;
+		Node* second = *i;
+		
+		std::string firstType = first->semanticAnalysis(st);
+		if (firstType == "error") return "error";
+		Record* record = first->type == "FuncCall" ? st.lookup(first->value) : st.lookup(firstType);
 
-		auto record = st.lookup(recieveType);
-		AClass* receiverClass = dynamic_cast<AClass*>(record);
-
-		if (receiverClass == nullptr) {
-			std::cerr << "@error at line " << lineno << " - semantic (recevier is not a class: " << recieveType << ")" << std::endl;
+		AClass* methodClass = dynamic_cast<AClass*>(record);
+		if (methodClass == nullptr) {
+			std::cerr << "@error at line " << lineno << " - semantic (recevier is not a class: " << first << ")" << std::endl;
 			errCode = 4;
 			return "error";
 		}
 
-		Method* method = receiverClass->lookupMethod(methodName);
+		Method* method = methodClass->lookupMethod(second->value);
 		if (method == nullptr) {
-			std::cerr << "@error at line " << lineno << " - semantic (method does not exist in class: " << recieveType << ")" << std::endl;
+			std::cerr << "@error at line " << lineno << " - semantic (method does not exist in class: " << first << ")" << std::endl;
 			errCode = 4;
 			return "error";
 		}
 
+		// Checking arguments
+		if (i != children.end())
+			for (auto arg : (*i)->children)
+				if (arg->semanticAnalysis(st) == "error") return "error";
 		return method->getType();
 	}
 };
