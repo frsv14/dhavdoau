@@ -7,7 +7,10 @@
 
 %code requires{
   #include <string>
-  #include "Node.h"
+  #include "./Nodes/Node.h"
+  #include "./Nodes/ExpressionNodes.h"
+  #include "./Nodes/MethodNodes.h"
+  #include "./Nodes/StatementNodes.h"
   #define USE_LEX_ONLY false
 }
 

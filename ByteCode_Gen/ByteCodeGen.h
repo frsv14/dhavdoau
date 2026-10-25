@@ -4,7 +4,7 @@
 #include "../intermediate_representation/Tac.h"
 #include "../intermediate_representation/BBlock.h"
 #include "../intermediate_representation/CFG.h"
-#include "../Node.h"
+#include "../Nodes/Node.h"
 #include <list>
 #include <fstream>
 #include <string>

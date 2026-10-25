@@ -75,13 +75,13 @@ private:
 
     };
 
-    struct heapNode {
+    struct StorageNode {
         std::string name = "";
         Value IFvalue;
     };
 
     std::list<Value> stack;
-    std::list<heapNode*> heap;
+    std::list<StorageNode*> storage;
 
     void push_int (int value){
         stack.push_front(Value(value));
@@ -92,12 +92,12 @@ private:
     }
 
     void store (std::string name){
-        heap.push_front(new heapNode{name, stack.front()});
+        storage.push_front(new StorageNode{name, stack.front()});
         stack.pop_front();
     }
 
     void load (std::string name){
-        for (heapNode* node : heap) {
+        for (StorageNode* node : storage) {
             if (node->name == name) {
                 stack.push_front(node->IFvalue);
                 return;

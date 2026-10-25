@@ -1,7 +1,7 @@
 #ifndef CFG_H
 #define CFG_H
 
-#include "../Node.h"
+#include "../Nodes/Node.h"
 #include "./BBlock.h"
 #include "./ParameterStmt.h"
 #include <cctype>
@@ -33,7 +33,6 @@ public:
 
     void printAllTacInstructions() const {
         for (const Function& function : functions) {
-            std::cout << "\nFunction " << function.name << ":\n";
             std::unordered_set<const BBlock*> visited;
             printBlock(function.entry, visited);
         }
@@ -63,15 +62,6 @@ public:
 
 private:
     std::vector<Function> functions;
-
-    static std::string makeLabel(const std::string& name) {
-        std::string label;
-        for (unsigned char character : name) {
-            label += std::isalnum(character) || character == '_'
-                ? static_cast<char>(character) : '_';
-        }
-        return label.empty() ? "function" : label;
-    }
 
     void collectFunctions(Node* node, const std::string& className) {
         if (node->type == "Main") {
@@ -105,7 +95,14 @@ private:
 
     void addFunction(const std::string& name, Node* body, Node* parameters) {
         BBlock* entry = new BBlock();
-        entry->setBBlockName(makeLabel(name) + "_entry");
+
+        std::string label;
+        for (unsigned char character : name) {
+            label += std::isalnum(character) || character == '_'
+                ? static_cast<char>(character) : '_';
+        }
+
+        entry->setBBlockName((label.empty() ? "function" : label) + "_entry");
         if (parameters != nullptr) {
             for (Node* parameter : parameters->children) {
                 entry->addTacInstructions(new ParameterStmt(parameter->value));

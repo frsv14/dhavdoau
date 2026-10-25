@@ -15,6 +15,14 @@ private:
     //Tac condition;
     BBlock *trueExit;
     BBlock* falseExit;
+
+    void writeEdge(std::ostream& outStream, const BBlock* destination) const {
+        if (destination != nullptr) {
+            outStream << '"' << escapeDot(name) << "\" -> \""
+                      << escapeDot(destination->getName()) << "\";\n";
+        }
+    }
+
 public:
     BBlock() : trueExit(nullptr), falseExit(nullptr) {}
     void addTacInstructions(Tac* tacIns) {tacInstructions.push_back(tacIns);}
@@ -73,14 +81,6 @@ public:
             }
         }
         return escaped;
-    }
-
-private:
-    void writeEdge(std::ostream& outStream, const BBlock* destination) const {
-        if (destination != nullptr) {
-            outStream << '"' << escapeDot(name) << "\" -> \""
-                      << escapeDot(destination->getName()) << "\";\n";
-        }
     }
 };
 

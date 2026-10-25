@@ -5,7 +5,7 @@
 
 class ParameterStmt : public Tac {
 public:
-    explicit ParameterStmt(const std::string& name) : Tac("param", name, "") {}
+    ParameterStmt(const std::string& name) : Tac("param", name, "") {}
 
     void dump() override { std::cout << getTacString() << std::endl; }
     std::string getTacString() override { return "param " + getLhs(); }
