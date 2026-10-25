@@ -13,7 +13,7 @@ private:
     std::map<std::string, Variable*> variables;
     std::map<std::string, Method*> methods;
 public:
-    AClass(std::string id, std::string type) : Record(id, type) {}
+    AClass(std::string id, std::string type, int lineNr) : Record(id, type, lineNr) {}
     ~AClass() override {}
     void addVariable(std::string id, Variable* variable) {variables.insert({id, variable});}
     void addMethod(std::string id, Method* method) {methods.insert({id, method});}

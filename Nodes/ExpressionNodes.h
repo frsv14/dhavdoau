@@ -118,13 +118,13 @@ public:
 		Record* record = st.lookup(value);
 		
 		if (record == nullptr) {
-			std::cerr << "@error at line " << lineno << " - semantic (undefined identifier: " << value << ")" << std::endl;
+			std::cerr << "@error - semantic (undefined identifier: " << value << ")" << std::endl;
 			errCode = 4;
 			return "error"; 
 		}
 
 		if (record->getKind() == "Variable" && lineno < record->getLineNr()) {
-			std::cerr << "@error at line " << lineno << " - semantic (" << value << " is not defined yet)" << std::endl;
+			std::cerr << "@error - semantic (" << value << " is not defined yet)" << std::endl;
 			errCode = 4;
 			return "error"; 
 		}

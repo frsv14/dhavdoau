@@ -21,7 +21,7 @@ public:
 			}
 		}
 
-		Method* method = new Method(methodName, returnType);
+		Method* method = new Method(methodName, returnType, lineno);
 		st.put(method->getId(), method);
 		
 		if (currentClass != nullptr) {
@@ -87,7 +87,7 @@ public:
 					auto prev = *prevNode;
 
 					if (prev->type == "Param" && prev->value == param->value) {
-						std::cerr << "@error at line " << lineno << " - semantic (already declared parameter: " << param->value << ")" << std::endl;
+						std::cerr << "@error - semantic (already declared parameter: " << param->value << ")" << std::endl;
 						errCode = 4;
 						break;
 					}
@@ -128,14 +128,14 @@ public:
 
 		AClass* methodClass = dynamic_cast<AClass*>(record);
 		if (methodClass == nullptr) {
-			std::cerr << "@error at line " << lineno << " - semantic (recevier is not a class: " << first << ")" << std::endl;
+			std::cerr << "@error - semantic (recevier is not a class: " << first << ")" << std::endl;
 			errCode = 4;
 			return "error";
 		}
 
 		Method* method = methodClass->lookupMethod(second->value);
 		if (method == nullptr) {
-			std::cerr << "@error at line " << lineno << " - semantic (" << second->value << " does not exist)" << std::endl;
+			std::cerr << "@error - semantic (" << second->value << " does not exist)" << std::endl;
 			errCode = 4;
 			return "error";
 		}
@@ -155,7 +155,7 @@ public:
 	~AClassNode() {}	
 
 	void createTable(SymbolTable& st, AClass* currentClass = nullptr) override {
-		AClass* aClass = new AClass(value, type);
+		AClass* aClass = new AClass(value, type, lineno);
 		st.put(value, aClass);
 
 		st.enterScope();
@@ -182,7 +182,7 @@ public:
 	~ArrayAccess() {}
 	std::string semanticAnalysis(SymbolTable& st) override {
 		if (children.size() != 2) {
-			std::cerr << "@error at line " << lineno << " - semantic (expected two operands)" << std::endl;
+			std::cerr << "@error - semantic (expected two operands)" << std::endl;
 			errCode = 4;
 			return "error";
 		}
@@ -192,7 +192,7 @@ public:
 		std::string indexType = (*i)->semanticAnalysis(st);
 
 		if (indexType != "IntType" && indexType != "IntLiteral") {
-			std::cerr << "@error at line " << lineno << " - semantic (indexing must be an integer)" << std::endl;
+			std::cerr << "@error - semantic (indexing must be an integer)" << std::endl;
 			errCode = 4;
 			return "error";
 		}
@@ -224,7 +224,7 @@ public:
 			}
 		}
 
-		Method* method = new Method(methodName, returnType);
+		Method* method = new Method(methodName, returnType, lineno);
 		st.put(method->getId(), method);
 		
 		if (currentClass != nullptr) {

@@ -140,7 +140,7 @@ public:
 			Record* record = st.lookup(value);
 
 			if (record == nullptr || (record->getKind() != "Method" && record->getKind() != "Class")) {
-				std::cerr << "@error at line " << lineno << " - semantic (" << value << " does not exist)" << std::endl;
+				std::cerr << "@error - semantic (" << value << " does not exist)" << std::endl;
 				errCode = 4;
 				return "error";
 			}
@@ -156,7 +156,7 @@ public:
 
 		if (type == "MemberAccess") {
 			if (children.size() != 2) {
-				std::cerr << "@error at line " << lineno << " - semantic (invalid MemberAccess)" << std::endl;
+				std::cerr << "@error - semantic (invalid MemberAccess)" << std::endl;
 				errCode = 4;
 				return "error";
 			}
@@ -170,7 +170,7 @@ public:
 
 			if (memberType.substr(memberType.size() - 2) == "[]" && memberName == "length") return "IntLiteral"; // Returns type - [] ex. IntType instead of IntType[]
 			else {
-				std::cerr << "@error at line " << lineno << " - semantic (invalid use of member ." << memberName << ")" << std::endl;
+				std::cerr << "@error - semantic (invalid use of member ." << memberName << ")" << std::endl;
 				errCode = 4;
 				return "error";
 			}
@@ -184,22 +184,31 @@ public:
 
 	void duplicateIdentifier(SymbolTable& st) {
         std::multimap<std::string, Record*> records = st.getCurrentScope()->getRecords();
-        int count = 0;
-
-        for (auto it : records) {
-            if (it.first == value)
-                count++;
-        }
-        if (count > 1) {
-			std::cerr << "@error at line " << lineno << " - semantic (Duplicated identifier " << value << ")" << std::endl;
-			errCode = 4;
+		if (type != "Class") {
+			for (auto i : records) {
+				if (i.first == value && i.second->getLineNr() < lineno ) {
+					std::cerr << "@error - semantic (Duplicated identifier " << value << ")" << std::endl;
+					errCode = 4;
+				}
+       	 	}
 		}
+		else if (type == "Class") {
+			int count = 0;
+			for (auto it : records) {
+				if (it.first == value)
+					count++;
+			}
+			if (count > 1) {
+				std::cerr << "@error - semantic (Duplicated identifier " << value << ")" << std::endl;
+				errCode = 4;
+			}
+        }
     }
 
 	std::string mathSemanticCheck(SymbolTable& st, std::string operand) {
         auto i = children.begin();
 		if (children.size() != 2 && operand != "Not") {
-			std::cerr << "@error at line " << lineno << " - semantic (expected two operands)" << std::endl;
+			std::cerr << "@error - semantic (expected two operands)" << std::endl;
 			errCode = 4;
 			return "error";
 		}
@@ -241,9 +250,9 @@ public:
 			return "BoolType";
 		else {
 			if (allOperands.find(operand) != allOperands.end())
-				std::cerr << "@error at line " << lineno << " - semantic (invalid operand type: " << lhsType << " " << allOperands.at(operand) << " " << rhsType << ")" << std::endl;
+				std::cerr << "@error - semantic (invalid operand type: " << lhsType << " " << allOperands.at(operand) << " " << rhsType << ")" << std::endl;
 			else 
-				std::cerr << "@error at line " << lineno << " - semantic (undefined math operation error)" << std::endl;
+				std::cerr << "@error - semantic (undefined math operation error)" << std::endl;
 			errCode = 4;
 			
 			if (operand == "Or" || operand == "And")
@@ -255,7 +264,7 @@ public:
 	std::string assignmentSemanticCheck(SymbolTable& st) {
         auto i = children.begin();
 		if (children.size() != 2) {
-			std::cerr << "@error at line " << lineno << " - semantic (expected type and value)" << std::endl;
+			std::cerr << "@error - semantic (expected type and value)" << std::endl;
 			errCode = 4;
 			return "error";
 		}
@@ -268,17 +277,17 @@ public:
 			return "error";
 		
 		if (lhsType == "IntType" && (rhsType != "IntLiteral" && rhsType != "IntType")) {
-			std::cerr << "@error at line " << lineno << " - semantic (type mismatch: got " << rhsType << ", expected " << lhsType << ")" << std::endl;
+			std::cerr << "@error - semantic (type mismatch: got " << rhsType << ", expected " << lhsType << ")" << std::endl;
 			errCode = 4;
 			return "error";
 		}
 		else if (lhsType == "FloatType" && (rhsType != "FloatLiteral" && rhsType != "FloatType" && rhsType != "IntLiteral" && rhsType != "IntType")) {
-			std::cerr << "@error at line " << lineno << " - semantic (type mismatch: got " << rhsType << ", expected " << lhsType << ")" << std::endl;
+			std::cerr << "@error - semantic (type mismatch: got " << rhsType << ", expected " << lhsType << ")" << std::endl;
 			errCode = 4;
 			return "error";
 		}
 		else if (lhsType == "BoolType" && (rhsType != "True" && rhsType != "False" && rhsType != "BoolType")) {
-			std::cerr << "@error at line " << lineno << " - semantic (type mismatch: got " << rhsType << ", expected " << lhsType << ")" << std::endl;
+			std::cerr << "@error - semantic (type mismatch: got " << rhsType << ", expected " << lhsType << ")" << std::endl;
 			errCode = 4;
 			return "error";
 		}

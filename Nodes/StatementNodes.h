@@ -16,7 +16,7 @@ public:
 			Record* record = st.getCurrentScope()->lookup(firstChild->value);
 
 			if (record == nullptr || record->getKind() != "Class") {
-				std::cerr << "@error at line " << firstChild->lineno << " - semantic (" << firstChild->value << " is undefined)" << std::endl;
+				std::cerr << "@error - semantic (" << firstChild->value << " is undefined)" << std::endl;
 				errCode = 4;
 				return "error";
 			}
@@ -232,7 +232,7 @@ public:
 
 	std::string semanticAnalysis(SymbolTable& st) override {
 		if (children.empty()) {
-			std::cerr << "@error at line " << lineno << " - semantic (missing condition)" << std::endl;
+			std::cerr << "@error - semantic (missing condition)" << std::endl;
 			errCode = 4;
 			return "error";
 		}
@@ -243,7 +243,7 @@ public:
 			return "error";
 		
 		if (conditionType != "BoolType" && conditionType != "True" && conditionType != "False") {
-			std::cerr << "@error at line " << lineno << " - semantic (invalid operand type: got " << conditionType << ", expected boolean)" << std::endl;
+			std::cerr << "@error - semantic (invalid operand type: got " << conditionType << ", expected boolean)" << std::endl;
 			errCode = 4;
 			return "error";
 		}
@@ -290,7 +290,7 @@ public:
 
 	std::string semanticAnalysis(SymbolTable& st) override {
 		if (children.empty()) {
-			std::cerr << "@error at line " << lineno << " - semantic (missing condition)" << std::endl;
+			std::cerr << "@error - semantic (missing condition)" << std::endl;
 			errCode = 4;
 			return "error";
 		}
@@ -301,7 +301,7 @@ public:
 			return "error";
 		
 		if (conditionType != "BoolType" && conditionType != "True" && conditionType != "False") {
-			std::cerr << "@error at line " << lineno << " - semantic (invalid operand type: got " << conditionType << ", expected boolean)" << std::endl;
+			std::cerr << "@error - semantic (invalid operand type: got " << conditionType << ", expected boolean)" << std::endl;
 			errCode = 4;
 			return "error";
 		}

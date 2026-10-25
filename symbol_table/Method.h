@@ -12,7 +12,7 @@ private:
     std::vector<Variable*> parameters;
     std::map<std::string, Variable*> variables;
 public:
-    Method(std::string id, std::string type) : Record(id, type) {}
+    Method(std::string id, std::string type, int lineNr) : Record(id, type, lineNr) {}
     ~Method() override {}
     void addParameter(Variable* parameter) {parameters.push_back(parameter);}
     void addVariable(std::string id, Variable* variable) {variables.insert({id, variable});}
