@@ -56,6 +56,7 @@ public:
 	}   // Bison needs this.
 	std::string getValue() { return value; }
 
+	// Base createTable containing leftover code from when it was not object oriented
 	virtual void createTable(SymbolTable& st, AClass* currentClass = nullptr) {
         if (type == "Program") {
             // Program
@@ -63,7 +64,7 @@ public:
             	child->createTable(st, currentClass);
             return;
         }
-
+		
         if (type == "VarDecl" || type == "VarDeclAssign") {
             Node* nodeType = children.empty() ? nullptr : children.front();
             std::string varType;
@@ -77,7 +78,7 @@ public:
 			else
 				varType = "Error!";
 
-            Variable* variable = new Variable(value, varType);
+            Variable* variable = new Variable(value, varType, lineno);
             st.put(value, variable);
 
             if (type == "VarDeclAssign") {
@@ -100,16 +101,8 @@ public:
             child->createTable(st, currentClass);
     }
 
+	// Base semanticAnalysis containing leftover checks from when it was not object oriented
 	virtual std::string semanticAnalysis(SymbolTable& st) {
-		if (type == "Class") {
-			st.enterScope();
-			for (auto child : children) {
-				child->semanticAnalysis(st);
-			}
-			st.exitScope();
-			return type;
-		}
-
 		if (type == "Method" || type == "Main") {
 			if (type == "Main")
 				duplicateIdentifier(st); 
@@ -147,7 +140,7 @@ public:
 			Record* record = st.lookup(value);
 
 			if (record == nullptr || (record->getKind() != "Method" && record->getKind() != "Class")) {
-				std::cerr << "@error at line " << lineno << " - semantic (undefined class: " << value << ")" << std::endl;
+				std::cerr << "@error at line " << lineno << " - semantic (" << value << " does not exist)" << std::endl;
 				errCode = 4;
 				return "error";
 			}
@@ -177,7 +170,7 @@ public:
 
 			if (memberType.substr(memberType.size() - 2) == "[]" && memberName == "length") return "IntLiteral"; // Returns type - [] ex. IntType instead of IntType[]
 			else {
-				std::cerr << "@error at line " << lineno << " - semantic (member ." << memberName << " used on non-array)" << std::endl;
+				std::cerr << "@error at line " << lineno << " - semantic (invalid use of member ." << memberName << ")" << std::endl;
 				errCode = 4;
 				return "error";
 			}
@@ -220,7 +213,7 @@ public:
 		if (lhsType == "error" || rhsType == "error")
 			return "error";
 		
-		std::set<std::string> allOperands = {"+", "-", "*", "/", "^", "Eq", "Neq", "Lt", "Gt", "Lte", "Gte", "And", "Or", "Not"};
+		std::map<std::string, std::string> allOperands = { {"+", "+"}, {"-", "-"}, {"*", "*"}, {"/", "/"}, {"^", "^"}, {"Eq", "="}, {"Neq", "!="}, {"Lt", "<"}, {"Gt", ">"}, {"Lte", "<="}, {"Gte", ">="}, {"And", "&"}, {"Or", "|"}, {"Not", "!"} };
 		std::set<std::string> validNumericOperands = {"+", "-", "*", "/", "^", "Eq", "Neq", "Lt", "Gt", "Lte", "Gte"};
 		std::set<std::string> validNumericCompareOperands = {"Eq", "Neq", "Lt", "Gt", "Lte", "Gte"};
 		std::set<std::string> validBooleanOperands = {"Eq", "Neq", "And", "Or", "Not"};
@@ -248,7 +241,7 @@ public:
 			return "BoolType";
 		else {
 			if (allOperands.find(operand) != allOperands.end())
-				std::cerr << "@error at line " << lineno << " - semantic (invalid operand type: " << lhsType << " " << operand << " " << rhsType << ")" << std::endl;
+				std::cerr << "@error at line " << lineno << " - semantic (invalid operand type: " << lhsType << " " << allOperands.at(operand) << " " << rhsType << ")" << std::endl;
 			else 
 				std::cerr << "@error at line " << lineno << " - semantic (undefined math operation error)" << std::endl;
 			errCode = 4;

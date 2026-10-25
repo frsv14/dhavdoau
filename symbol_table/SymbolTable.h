@@ -17,56 +17,6 @@ private:
     Scope* root;
     Scope* current;
 
-    /////////////////////////
-    std::string escapeDotLabel(const std::string& text) {
-        std::string escaped;
-        escaped.reserve(text.size());
-
-        for (char c : text) {
-            if (c == '"' || c == '\\') {
-                escaped.push_back('\\');
-            }
-            if (c == '\n') {
-                escaped.push_back('\\');
-                escaped.push_back('n');
-            } else {
-                escaped.push_back(c);
-            }
-        }
-
-        return escaped;
-    }
-
-    std::string writeScopeToDot(Scope* scope, std::ofstream& out, int& nextNodeId) {
-        if (!scope) {
-            return "";
-        }
-
-        int scopeId = nextNodeId++;
-        std::string scopeNode = "n" + std::to_string(scopeId);
-        out << "  " << scopeNode << " [label=\"Scope\", shape=ellipse];" << std::endl;
-
-        for (const auto& entry : scope->getRecords()) {
-            Record* record = entry.second;
-            int recordId = nextNodeId++;
-            std::string recordNode = "n" + std::to_string(recordId);
-            std::string recordLabel = escapeDotLabel(
-                "id: " + entry.first + " | Record: " + record->getKind() + " | type: " + record->getType()
-            );
-            out << "  " << recordNode << " [label=\"" << recordLabel << "\", shape=note];" << std::endl;
-            out << "  " << scopeNode << " -> " << recordNode << ";" << std::endl;
-        }
-
-        for (Scope* child : scope->getChildrenScopes()) {
-            std::string childNode = writeScopeToDot(child, out, nextNodeId);
-            if (!childNode.empty()) {
-                out << "  " << scopeNode << " -> " << childNode << " [style=dashed];" << std::endl;
-            }
-        }
-
-        return scopeNode;
-    }
-    ///////////////////////////////
 public:
     SymbolTable() {
         root = new Scope(nullptr);
@@ -82,25 +32,44 @@ public:
     void printTable() {root->printTable();}
     void resetTable() {root->resetScope();}
 
-    //////////////////////////////
-    void exportToDot(const std::string& filename = "symbol_table.dot") {
-        std::ofstream out(filename);
-        if (!out.is_open()) {
-            std::cerr << "Unable to create symbol table DOT file: " << filename << std::endl;
+    void generateSymbolTable() {
+        std::string filename = "symbol_table.dot";
+        std::ofstream outstream;
+        outstream.open(filename);
+        if (!outstream.is_open()) {
+            std::cerr << "Unable to create symbol table dot file: " << filename << std::endl;
             return;
         }
 
-        int nextNodeId = 0;
-        out << "digraph SymbolTable {" << std::endl;
-        out << "  graph [rankdir=TB];" << std::endl;
-        out << "  node [shape=box, style=rounded];" << std::endl;
-        writeScopeToDot(root, out, nextNodeId);
-        out << "}" << std::endl;
-        out.close();
-
-        std::cout << "Built a symbol-table graph at " << filename << std::endl;
+        int count = 0;
+        outstream << "digraph {" << std::endl;
+        generateSymbolTableContent(root, count, &outstream);
+        outstream << "}" << std::endl;
+        outstream.close();
+        std::cout << "Successfully built a symbol table dot file \"" << filename << "\"" << std::endl;
     }
-    //////////////////////////////
+    
+    void generateSymbolTableContent(Scope* scope, int& count, std::ofstream* outStream) {
+        if (!scope) return;
+
+        int id = count++;
+        *outStream << "n" << id << " [label=\"Scope\"];" << std::endl;
+
+        for (auto entry : scope->getRecords()) {
+            Record* record = entry.second;
+            int recordId = count++;
+            *outStream << "n" << recordId << " [shape=box, label=\"" << "ID: " << entry.first << " | Record: " << record->getKind() << " | Type: " << record->getType() << "\"];" << std::endl;
+            *outStream << "n" << id << " -> n" << recordId << std::endl;
+        }
+
+        for (Scope* child : scope->getChildrenScopes()) {
+            if (!child) continue;
+
+            int childId = count;
+            generateSymbolTableContent(child, count, outStream);
+            *outStream << "n" << id << " -> n" << childId << std::endl;
+        }
+    }    
 };
 
 #endif

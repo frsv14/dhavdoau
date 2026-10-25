@@ -7,7 +7,7 @@
 class Variable : public Record {
 private:
 public:
-    Variable(std::string id, std::string type) : Record(id, type) {}
+    Variable(std::string id, std::string type, int lineNr) : Record(id, type, lineNr) {}
     ~Variable() override {}
     std::string getKind() const override {return "Variable";}
     void printRecord() const override {

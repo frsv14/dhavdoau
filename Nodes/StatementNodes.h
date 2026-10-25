@@ -10,6 +10,18 @@ public:
 
 	std::string semanticAnalysis(SymbolTable& st) override {
 		duplicateIdentifier(st); 
+
+		Node* firstChild = children.front();
+		if (firstChild->type == "TypeID" || firstChild->type == "Identifier") {
+			Record* record = st.getCurrentScope()->lookup(firstChild->value);
+
+			if (record == nullptr || record->getKind() != "Class") {
+				std::cerr << "@error at line " << firstChild->lineno << " - semantic (" << firstChild->value << " is undefined)" << std::endl;
+				errCode = 4;
+				return "error";
+			}
+		}
+
 		if (type == "VarDeclAssign") {
 			std::string ret = assignmentSemanticCheck(st);
 			return ret;

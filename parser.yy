@@ -113,7 +113,7 @@ class_body
 entry
     : MAIN LP RP COLON INTKEY stmtBl 
         {
-          $$ = new Node("Main", "main", yylineno);
+          $$ = new MainNode("Main", "main", yylineno);
           $$->children.push_back($6);
         }
     ;

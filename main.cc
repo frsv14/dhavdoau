@@ -3,10 +3,6 @@
 #include "parser.tab.hh"
 
 #include "symbol_table/SymbolTable.h"
-//#include "symbol_table/Record.h"
-//#include "symbol_table/Variable.h"
-//#include "symbol_table/Method.h"
-//#include "symbol_table/Class.h"
 #include "intermediate_representation/CFG.h"
 #include "ByteCode_Gen/ByteCodeGen.h"
 #include "Interpreter/Interpreter.h"
@@ -85,15 +81,8 @@ int main(int argc, char **argv)
         std::cout << "\n" << "----- SYMBOLTABLE START -----" << "\n" << std::endl;
         SymbolTable st;
         root->createTable(st);
-        /*
-        st.put("test1", new Variable("test", "string"));
-        st.put("test2", new Variable("num", "int"));
-        st.put("testMethod", new Method("testMethod", "void"));
-        st.put("testClass", new AClass("TestClass", "TestClass"));
-        */
-        st.exportToDot();
+        st.generateSymbolTable();
         st.printTable();
-        //test end
 
         std::cout << "\n" << "----- SEMANTIC START -----" << "\n" << std::endl;
         st.resetTable();

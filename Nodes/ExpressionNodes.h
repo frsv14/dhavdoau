@@ -122,7 +122,14 @@ public:
 			errCode = 4;
 			return "error"; 
 		}
-		return st.lookup(value)->getType(); 
+
+		if (record->getKind() == "Variable" && lineno < record->getLineNr()) {
+			std::cerr << "@error at line " << lineno << " - semantic (" << value << " is not defined yet)" << std::endl;
+			errCode = 4;
+			return "error"; 
+		}
+
+		return record->getType(); 
 	}
 
 	IRResult genIR(BBlock *currentBlock) override {
