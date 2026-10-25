@@ -64,78 +64,6 @@ public:
             return;
         }
 
-		if (type == "Class") {
-            // Class
-			std::cout << "Type: " << type << std::endl;
-			std::cout << "value: " << value << std::endl;
-            AClass* aClass = new AClass(value, type);
-            st.put(value, aClass);
-
-            st.enterScope();
-            for (auto child : children) 
-                child->createTable(st, aClass);
-            st.exitScope();
-            return;
-        }
-
-        if (type == "Method" || type == "Main") {
-            std::string methodName = value;
-            std::string returnType = (type == "Main") ? "IntType" : "";
-
-            if (type != "Main" && children.size() > 1) {
-                auto i = children.begin();
-                i++;
-                if (i != children.end()) {
-                    returnType = (*i)->type;
-                }
-            }
-
-            Method* method = new Method(methodName, returnType);
-            st.put(method->getId(), method);
-            
-            if (currentClass != nullptr) {
-                currentClass->addMethod(method->getId(), method);
-            }
-
-            st.enterScope();
-
-            if (!children.empty() && children.front()->type == "Params") {
-                Node* paramsNode = children.front();
-				
-                for (auto child : paramsNode->children) {
-                    if (child->type != "Param") continue;
-
-					Node* nodeType = child->children.empty() ? nullptr : child->children.front();
-					std::string paramType;
-
-					if (nodeType != nullptr && nodeType->type == "ArrayType" && nodeType->children.empty() == false)
-						paramType = nodeType->children.front()->type + "[]";
-					else if (nodeType != nullptr && (nodeType->type == "TypeID" || nodeType->type == "Identifier"))
-						paramType = nodeType->value;
-					else if (nodeType != nullptr)
-						paramType = nodeType->type;
-					else
-						paramType = "Error: non param type!";
-
-					Variable* param = new Variable(child->value, paramType);
-					method->addParameter(param);
-					st.put(param->getId(), param);
-                }
-            }
-
-            for (auto child : children) {
-                if (child->type == "Params") continue;
-
-				if (child->type == "Block")
-						for (auto i : child->children)
-							i->createTable(st, currentClass); 
-				else
-					child->createTable(st, currentClass);
-            }
-            st.exitScope();
-            return;
-        }
-
         if (type == "VarDecl" || type == "VarDeclAssign") {
             Node* nodeType = children.empty() ? nullptr : children.front();
             std::string varType;
@@ -247,7 +175,7 @@ public:
 
 			if (memberType == "error") return "error";
 
-			if (memberType.substr(memberType.size() - 2) == "[]" && memberName == "length") return "IntLiteral"; //Returns type - [] ex. IntType instead of IntType[]
+			if (memberType.substr(memberType.size() - 2) == "[]" && memberName == "length") return "IntLiteral"; // Returns type - [] ex. IntType instead of IntType[]
 			else {
 				std::cerr << "@error at line " << lineno << " - semantic (member ." << memberName << " used on non-array)" << std::endl;
 				errCode = 4;
@@ -301,8 +229,6 @@ public:
 		std::set<std::string> validBooleanOperands = {"Eq", "Neq", "And", "Or", "Not"};
 		std::set<std::string> numericTypes = {"IntLiteral", "IntType", "FloatLiteral", "FloatType"};
 		std::set<std::string> booleanTypes = {"BoolType", "True", "False"};
-		std::string lhsTypeCut = lhsType;
-		std::string rhsTypeCut = rhsType;
 
 		if (numericTypes.find(lhsType) != numericTypes.end() && numericTypes.find(rhsType) != numericTypes.end() && validNumericOperands.find(operand) != validNumericOperands.end()) {
 			std::string resType;
@@ -1083,6 +1009,64 @@ private:
 public:
 	MethodNode(string t, string v, int l) : Node(t, v, l) {}
 	~MethodNode() {}
+
+	void createTable(SymbolTable& st, AClass* currentClass = nullptr) override {
+		std::string methodName = value;
+		std::string returnType = (type == "Main") ? "IntType" : "";
+
+		if (type != "Main" && children.size() > 1) {
+			auto i = children.begin();
+			i++;
+			if (i != children.end()) {
+				returnType = (*i)->type;
+			}
+		}
+
+		Method* method = new Method(methodName, returnType);
+		st.put(method->getId(), method);
+		
+		if (currentClass != nullptr) {
+			currentClass->addMethod(method->getId(), method);
+		}
+
+		st.enterScope();
+
+		if (!children.empty() && children.front()->type == "Params") {
+			Node* paramsNode = children.front();
+			
+			for (auto child : paramsNode->children) {
+				if (child->type != "Param") continue;
+
+				Node* nodeType = child->children.empty() ? nullptr : child->children.front();
+				std::string paramType;
+
+				if (nodeType != nullptr && nodeType->type == "ArrayType" && nodeType->children.empty() == false)
+					paramType = nodeType->children.front()->type + "[]";
+				else if (nodeType != nullptr && (nodeType->type == "TypeID" || nodeType->type == "Identifier"))
+					paramType = nodeType->value;
+				else if (nodeType != nullptr)
+					paramType = nodeType->type;
+				else
+					paramType = "Error: non param type!";
+
+				Variable* param = new Variable(child->value, paramType);
+				method->addParameter(param);
+				st.put(param->getId(), param);
+			}
+		}
+
+		for (auto child : children) {
+			if (child->type == "Params") continue;
+
+			if (child->type == "Block")
+					for (auto i : child->children)
+						i->createTable(st, currentClass); 
+			else
+				child->createTable(st, currentClass);
+		}
+		st.exitScope();
+	}
+
 	std::string semanticAnalysis(SymbolTable& st) override {
 		duplicateIdentifier(st);
 		st.enterScope();
@@ -1170,6 +1154,17 @@ private:
 public:
 	AClassNode(string t, string v, int l) : Node(t, v, l) {}
 	~AClassNode() {}	
+
+	void createTable(SymbolTable& st, AClass* currentClass = nullptr) override {
+		AClass* aClass = new AClass(value, type);
+		st.put(value, aClass);
+
+		st.enterScope();
+		for (auto child : children) 
+			child->createTable(st, aClass);
+		st.exitScope();
+	}
+
 	std::string semanticAnalysis(SymbolTable& st) override {
 		duplicateIdentifier(st); 
 
