@@ -12,17 +12,8 @@ class BBlock {
 private:
     std::string name; //unique name
     std::vector<Tac*> tacInstructions;
-    //Tac condition;
     BBlock *trueExit;
     BBlock* falseExit;
-
-    void writeEdge(std::ostream& outStream, const BBlock* destination) const {
-        if (destination != nullptr) {
-            outStream << '"' << escapeDot(name) << "\" -> \""
-                      << escapeDot(destination->getName()) << "\";\n";
-        }
-    }
-
 public:
     BBlock() : trueExit(nullptr), falseExit(nullptr) {}
     void addTacInstructions(Tac* tacIns) {tacInstructions.push_back(tacIns);}
@@ -42,22 +33,30 @@ public:
         if (!outStream) {
             throw std::runtime_error("Could not open CFG.dot for writing");
         }
+
         outStream << "digraph CFG {\n";
         std::unordered_set<const BBlock*> visited;
         writeDot(outStream, visited);
         outStream << "}\n";
-        if (!outStream) {
-            throw std::runtime_error("Could not write CFG.dot");
+
+    }
+
+    void writeEdge(std::ostream& outStream, const BBlock* destination) const {
+        if (destination != nullptr) { 
+                outStream << '"' << escapeDot(name) << "\" -> \"" << escapeDot(destination->getName()) << "\";\n";
         }
     }
 
     void writeDot(std::ostream& outStream,
                   std::unordered_set<const BBlock*>& visited) const {
-        if (!visited.insert(this).second) return;
-        outStream << '"' << escapeDot(name) << "\" [shape=box, label=\""
-                  << escapeDot(getTacStrings()) << "\"];\n";
+
+        if (!visited.insert(this).second) return; 
+        
+        outStream << '"' << escapeDot(name) << "\" [shape=box, label=\"" << escapeDot(getTacStrings()) << "\"];\n";
+
         writeEdge(outStream, trueExit);
         writeEdge(outStream, falseExit);
+
         if (trueExit != nullptr) trueExit->writeDot(outStream, visited);
         if (falseExit != nullptr) falseExit->writeDot(outStream, visited);
     }
@@ -74,6 +73,7 @@ public:
         std::string escaped;
         for (char character : value) {
             if (character == '\\' || character == '"') escaped += '\\';
+            
             if (character == '\n') {
                 escaped += "\\n";
             } else if (character != '\r') {

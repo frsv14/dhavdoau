@@ -121,7 +121,6 @@ private:
         stack.pop_front();
 
         float a = (exponent.type == ValueType::FLOAT) ? exponent.f : exponent.i;
-
         float b = (base.type == ValueType::FLOAT) ? base.f : base.i;
 
         stack.push_front(Value(std::pow(b, a)));

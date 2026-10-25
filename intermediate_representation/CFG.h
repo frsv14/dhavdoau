@@ -18,6 +18,8 @@ public:
         BBlock* entry;
     };
 
+    const std::vector<Function>& getFunctions() const { return functions; }
+
     void generate(Node* ast) {
         if (ast == nullptr) {
             throw std::invalid_argument("Cannot generate IR from a null AST");
@@ -28,8 +30,6 @@ public:
             throw std::logic_error("The AST contains no main function or methods");
         }
     }
-
-    const std::vector<Function>& getFunctions() const { return functions; }
 
     void printAllTacInstructions() const {
         for (const Function& function : functions) {
@@ -52,11 +52,9 @@ public:
             std::unordered_set<const BBlock*> visited;
             function.entry->writeDot(outStream, visited);
             outStream << "  }\n";
-        }
+        }        
         outStream << "}\n";
-        if (!outStream) {
-            throw std::runtime_error("Could not write " + filename);
-        }
+
         std::cout << "Wrote control-flow graph to " << filename << '\n';
     }
 
@@ -88,6 +86,7 @@ private:
 
         const std::string nestedClassName =
             node->type == "Class" ? node->value : className;
+            
         for (Node* child : node->children) {
             collectFunctions(child, nestedClassName);
         }

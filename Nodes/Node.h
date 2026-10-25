@@ -182,9 +182,6 @@ public:
 				return "error";
 			}
 		}
-			//
-			// TODO: FIX THIS 
-			//
 
 		for (auto child : children) {
 			child->semanticAnalysis(st);
@@ -292,13 +289,6 @@ public:
 			errCode = 4;
 			return "error";
 		}
-		/*
-		else if (lhsType != rhsType) {
-			std::cerr << "@error at line " << lineno << " - semantic (type mismatch: got " << rhsType << ", expected " << lhsType << ")" << std::endl;
-			errCode = 4;
-			return "error";
-		} 
-		*/
 		return lhsType;
 	}
 
@@ -310,7 +300,6 @@ public:
 		}
 	}
 
-	//logic for generating IR for each node type
 	virtual IRResult genIR(BBlock *currentBlock) {
 		if (type == "And") return emitBinary(currentBlock, "&&");
 		if (type == "Or") return emitBinary(currentBlock, "||");

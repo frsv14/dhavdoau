@@ -13,11 +13,9 @@ class ByteCodeGen : public Node {
     private:
 
     static bool isNumber(const std::string& value) {
-        //dena delen är ai för jag viste inte hur jag skulle göra
         char* end = nullptr;
         std::strtod(value.c_str(), &end);
         return end != value.c_str() && *end == '\0';
-        //
     }
 
     static void writeValue(const std::string& value, std::ofstream& out) {
