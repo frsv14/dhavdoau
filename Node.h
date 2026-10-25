@@ -656,6 +656,10 @@ public:
 	}
 
 	IRResult genIR(BBlock *currentBlock) override {
+		if (type == "Not" || type == "And" || type == "Or") {
+			return Node::genIR(currentBlock);
+		}
+
 		std::string op;
 		if (type == "Eq") op = "==";
 		else if (type == "Neq") op = "!=";
